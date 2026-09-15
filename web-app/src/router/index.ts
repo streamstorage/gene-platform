@@ -1,4 +1,4 @@
-import AuthLayout from '@/layouts/auth-layout.vue'
+import AuthLayout from '@/components/layouts/auth-layout.vue'
 import { useNProgress } from '@vueuse/integrations/useNProgress'
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
@@ -40,7 +40,7 @@ const routes: Array<RouteRecordRaw> = [
   {
     name: 'index',
     path: '/',
-    component: () => import('@/pages/HelloWorld.vue'),
+    component: () => import('@/pages/index.vue'),
   },
 ]
 

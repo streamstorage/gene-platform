@@ -1,3 +1,4 @@
+import AuthLayout from '@/layouts/auth-layout.vue'
 import { useNProgress } from '@vueuse/integrations/useNProgress'
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
@@ -13,19 +14,33 @@ const routes: Array<RouteRecordRaw> = [
     redirect: { name: '404' },
   },
   {
+    path: '/auth',
+    component: AuthLayout,
+    meta: {
+      guard: 'guest',
+    },
+    children: [
+      {
+        name: 'sign-in',
+        path: 'sign-in',
+        component: () => import('@/pages/auth/sign-in.vue'),
+      },
+    ],
+  },
+  {
     name: '404',
     path: '/404',
-    component: () => import('../pages/errors/404.vue'),
+    component: () => import('@/pages/errors/404.vue'),
   },
   {
     name: '503',
     path: '/503',
-    component: () => import('../pages/errors/503.vue'),
+    component: () => import('@/pages/errors/503.vue'),
   },
   {
     name: 'index',
     path: '/',
-    component: () => import('../pages/HelloWorld.vue'),
+    component: () => import('@/pages/HelloWorld.vue'),
   },
 ]
 

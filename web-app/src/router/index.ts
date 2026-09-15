@@ -15,7 +15,12 @@ const routes: Array<RouteRecordRaw> = [
   {
     name: '404',
     path: '/404',
-    component: () => import('../pages/HelloWorld.vue'),
+    component: () => import('../pages/errors/404.vue'),
+  },
+  {
+    name: '503',
+    path: '/503',
+    component: () => import('../pages/errors/503.vue'),
   },
   {
     name: 'index',

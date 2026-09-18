@@ -21,7 +21,7 @@
         >
           Go Back
         </Button>
-        <Button @click="() => router.push('/')">Back to Home</Button>
+        <Button @click="router.push('/')">Back to Home</Button>
       </div>
     </div>
   </div>

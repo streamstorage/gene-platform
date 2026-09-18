@@ -1,17 +1,13 @@
-import AuthLayout from '@/components/layouts/auth-layout.vue'
+import AppLayout from '@/components/layouts/AppLayout.vue'
+import AuthLayout from '@/components/layouts/AuthLayout.vue'
 import { useNProgress } from '@vueuse/integrations/useNProgress'
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
-const { start, done } = useNProgress(0.0, {
-  speed: 500,
-  trickleSpeed: 200,
-  showSpinner: false,
-})
-
 const routes: Array<RouteRecordRaw> = [
   {
-    path: '/:pathMatch(.*)*',
-    redirect: { name: '404' },
+    path: '/',
+    name: 'Index',
+    component: () => import('@/views/Index.vue'),
   },
   {
     path: '/auth',
@@ -21,26 +17,38 @@ const routes: Array<RouteRecordRaw> = [
     },
     children: [
       {
-        name: 'sign-in',
-        path: 'sign-in',
-        component: () => import('@/pages/auth/sign-in.vue'),
+        path: '/auth/sign-in',
+        name: 'SignIn',
+        component: () => import('@/views/auth/SignIn.vue'),
       },
     ],
   },
   {
-    name: '404',
-    path: '/404',
-    component: () => import('@/pages/errors/404.vue'),
+    path: '/app',
+    name: 'app',
+    component: AppLayout,
+    props: { isAdmin: false },
+    meta: {
+      guard: 'user',
+    },
+    redirect: { name: 'Dashboard' },
+    children: [
+      {
+        path: '/app/dashboard',
+        name: 'Dashboard',
+        component: () => import('@/views/app/Dashboard.vue'),
+      },
+    ],
   },
   {
-    name: '503',
     path: '/503',
-    component: () => import('@/pages/errors/503.vue'),
+    name: '503',
+    component: () => import('@/views/errors/503.vue'),
   },
   {
-    name: 'index',
-    path: '/',
-    component: () => import('@/pages/index.vue'),
+    path: '/:pathMatch(.*)*',
+    name: '404',
+    component: () => import('@/views/errors/404.vue'),
   },
 ]
 
@@ -58,6 +66,12 @@ const router = createRouter({
       window.scrollTo(0, 0)
     }
   },
+})
+
+const { start, done } = useNProgress(0.0, {
+  speed: 500,
+  trickleSpeed: 200,
+  showSpinner: false,
 })
 
 router.beforeEach(() => {

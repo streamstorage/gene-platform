@@ -725,12 +725,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lucide/vue@npm:^1.47.0":
-  version: 1.47.0
-  resolution: "@lucide/vue@npm:1.47.0"
+"@lucide/vue@npm:^1.48.0":
+  version: 1.48.0
+  resolution: "@lucide/vue@npm:1.48.0"
   peerDependencies:
     vue: ">=3.0.1"
-  checksum: 10c0/c5156c10e174187abf7492f2480cfa5956dcdfff7de6c5e66fbf20f42ea4f12cf957dcd9ff3175aa774079d851aaf2ef21624c2786cc3d8d6cfe79ad0f6135de
+  checksum: 10c0/a17664b211d85802bf45e0581a2ed2a32813f7bbf34378ec33c8aee26e09b11a324e7d37f9de1b502fae2c3630a2e7c0527f94f72c5e54b1b3d557fcd81e2f48
   languageName: node
   linkType: hard
 
@@ -7558,6 +7558,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"vue-sonner@npm:^2.0.9":
+  version: 2.0.9
+  resolution: "vue-sonner@npm:2.0.9"
+  peerDependencies:
+    "@nuxt/kit": ^4.0.3
+    "@nuxt/schema": ^4.0.3
+    nuxt: ^4.0.3
+  peerDependenciesMeta:
+    "@nuxt/kit":
+      optional: true
+    "@nuxt/schema":
+      optional: true
+    nuxt:
+      optional: true
+  checksum: 10c0/0001fcfd9163dd69f74bbbdbd50f61d7ceb514bf16571562cd51b0824b89cee809de2f93e1bb13fcc06375a07bc3e8bc1f552cb98e8ba1a665c8aecda47e039c
+  languageName: node
+  linkType: hard
+
 "vue-tsc@npm:^3.3.11":
   version: 3.3.11
   resolution: "vue-tsc@npm:3.3.11"
@@ -7595,7 +7613,7 @@ __metadata:
   resolution: "web-app@workspace:."
   dependencies:
     "@faker-js/faker": "npm:^10.4.0"
-    "@lucide/vue": "npm:^1.47.0"
+    "@lucide/vue": "npm:^1.48.0"
     "@tailwindcss/vite": "npm:^4.3.3"
     "@tanstack/vue-table": "npm:^9.2.4"
     "@tsconfig/node24": "npm:^24.0.4"
@@ -7628,6 +7646,7 @@ __metadata:
     vue: "npm:^3.5.42"
     vue-eslint-parser: "npm:^10.4.1"
     vue-router: "npm:^5.2.0"
+    vue-sonner: "npm:^2.0.9"
     vue-tsc: "npm:^3.3.11"
     yarn-run-all: "npm:^3.1.1"
     zod: "npm:3.25.76"

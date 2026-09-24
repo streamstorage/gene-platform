@@ -6,6 +6,11 @@ export const callTypes = new Map<UserStatus, string>([
   ['inactive', 'bg-neutral-300/40 border-neutral-300'],
 ])
 
+export const status = [
+  { label: 'Active', value: 'active' },
+  { label: 'Inactive', value: 'inactive' },
+] as const
+
 export const roles = [
   {
     label: 'Admin',

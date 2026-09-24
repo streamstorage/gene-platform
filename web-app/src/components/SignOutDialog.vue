@@ -15,7 +15,7 @@
   <ConfirmDialog
     v-model="modelValue"
     title="Sign out"
-    desc="Are you sure you want to sign out? You will need to sign in again to access your account."
+    desc="Are you sure to sign out? You will need to sign in again to access the application."
     confirmText="Sign out"
     destructive
     :handleConfirm="handleSignOut"

@@ -1,7 +1,6 @@
 <script setup lang="ts" generic="T extends RowData">
-  import { type ColumnFilters, type DataTableProps, features } from '.'
+  import { type ColumnFilters, type DataTableProps, type DataTableInstance, features } from '.'
   import DataTablePagination from './DataTablePagination.vue'
-  import DataTableToolbar from './DataTableToolbar.vue'
   import {
     Table,
     TableBody,
@@ -22,9 +21,12 @@
   import { toRef, ref } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
 
-  import { roles } from '@/views/admin/users/data/data.ts'
-
   defineOptions({ inheritAttrs: false })
+
+  defineSlots<{
+    'bulk-actions': (props: { table: DataTableInstance<T> }) => unknown
+    toolbar: (props: { table: DataTableInstance<T> }) => unknown
+  }>()
 
   const props = defineProps<DataTableProps<T>>()
 
@@ -149,13 +151,12 @@
 
   const ensurePageInRange = (
     pageCount: number,
-    opts: { resetTo?: 'first' | 'last' } = { resetTo: 'first' }
+    opts: { resetTo?: 'first' | 'last' } = { resetTo: 'last' }
   ) => {
     const currentPage = (search as QueryRecord)[pageKey]
     const pageNum = Number(currentPage) || defaultPage
     if (pageCount > 0 && pageNum > pageCount) {
-      router.push({
-        replace: true,
+      router.replace({
         path: route.path,
         query: {
           ...(route.query as QueryRecord),
@@ -200,25 +201,10 @@
       )
     "
   >
-    <DataTableToolbar
+    <slot
+      v-if="$slots.toolbar"
+      name="toolbar"
       :table="table"
-      search-placeholder="Filter users..."
-      search-key="name"
-      :filters="[
-        {
-          columnId: 'status',
-          title: 'Status',
-          options: [
-            { label: 'Active', value: 'active' },
-            { label: 'Inactive', value: 'inactive' },
-          ],
-        },
-        {
-          columnId: 'role',
-          title: 'Role',
-          options: roles.map((role) => ({ ...role })),
-        },
-      ]"
     />
     <div class="overflow-hidden rounded-md border">
       <Table
@@ -299,6 +285,10 @@
       :table="table"
       class="mt-auto"
     />
-    <!-- <DataTableBulkActions table={table} /> -->
+    <slot
+      v-if="$slots['bulk-actions']"
+      name="bulk-actions"
+      :table="table"
+    />
   </div>
 </template>

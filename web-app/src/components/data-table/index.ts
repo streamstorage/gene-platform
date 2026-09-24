@@ -87,4 +87,6 @@ export interface DataTableProps<T extends RowData> {
 }
 
 export { default as DataTable } from './DataTable.vue'
+export { default as DataTableBulkActions } from './DataTableBulkActions.vue'
 export { default as DataTableColumnHeader } from './DataTableColumnHeader.vue'
+export { default as DataTableToolbar } from './DataTableToolbar.vue'

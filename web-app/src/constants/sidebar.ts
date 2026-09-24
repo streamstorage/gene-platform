@@ -1,5 +1,15 @@
 import { type NavGroup } from '@/components/layouts/app-sidebar'
-import { Construction, HelpCircle, LayoutDashboard, Palette, Settings, UserCog } from '@lucide/vue'
+import {
+  CircleChevronLeft,
+  Columns3Cog,
+  Construction,
+  Flower,
+  LayoutDashboard,
+  Palette,
+  Settings,
+  UserCog,
+  Users,
+} from '@lucide/vue'
 
 export const navGroups: NavGroup[] = [
   {
@@ -27,7 +37,7 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
-    title: 'Other',
+    title: 'User',
     items: [
       {
         title: 'Settings',
@@ -39,16 +49,49 @@ export const navGroups: NavGroup[] = [
             icon: UserCog,
           },
           {
-            title: 'Appearance',
+            title: 'Preference',
             url: '/settings/appearance',
             icon: Palette,
           },
         ],
       },
+    ],
+  },
+  {
+    title: 'Other',
+    items: [
       {
-        title: 'Help Center',
-        url: '/help-center',
-        icon: HelpCircle,
+        title: 'System Administration',
+        url: '/admin/summary',
+        icon: Columns3Cog,
+      },
+    ],
+  },
+]
+
+export const navAdminGroups: NavGroup[] = [
+  {
+    title: 'General',
+    items: [
+      {
+        title: 'Summary',
+        url: '/admin/summary',
+        icon: Flower,
+      },
+      {
+        title: 'Users',
+        url: '/admin/users',
+        icon: Users,
+      },
+    ],
+  },
+  {
+    title: 'Other',
+    items: [
+      {
+        title: 'Back to application',
+        url: '/app/dashboard',
+        icon: CircleChevronLeft,
       },
     ],
   },

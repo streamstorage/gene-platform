@@ -9,7 +9,14 @@
     SidebarHeader,
     SidebarRail,
   } from '@/components/ui/sidebar'
-  import { navGroups } from '@/constants/sidebar'
+  import { navGroups, navAdminGroups } from '@/constants/sidebar'
+  import { computed } from 'vue'
+
+  const props = defineProps({
+    isAdmin: { type: Boolean, default: false },
+  })
+
+  const groups = computed(() => (props.isAdmin ? navAdminGroups : navGroups))
 </script>
 
 <template>
@@ -22,7 +29,7 @@
     </SidebarHeader>
     <SidebarContent>
       <AppSidebarNavGroup
-        v-for="group in navGroups"
+        v-for="group in groups"
         :key="group.title"
         :group="group"
       />

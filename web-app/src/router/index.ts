@@ -41,6 +41,28 @@ const routes: Array<RouteRecordRaw> = [
     ],
   },
   {
+    path: '/admin',
+    name: 'Admin',
+    component: AppLayout,
+    props: { isAdmin: true },
+    meta: {
+      guard: 'admin',
+    },
+    redirect: { name: 'Summary' },
+    children: [
+      {
+        path: '/admin/summary',
+        name: 'Summary',
+        component: () => import('@/views/app/Dashboard.vue'),
+      },
+      {
+        path: '/admin/users',
+        name: 'Users',
+        component: () => import('@/views/admin/users/Users.vue'),
+      },
+    ],
+  },
+  {
     path: '/503',
     name: '503',
     component: () => import('@/views/errors/503.vue'),

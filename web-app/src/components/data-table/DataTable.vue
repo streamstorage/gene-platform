@@ -1,0 +1,304 @@
+<script setup lang="ts" generic="T extends RowData">
+  import { type ColumnFilters, type DataTableProps, features } from '.'
+  import DataTablePagination from './DataTablePagination.vue'
+  import DataTableToolbar from './DataTableToolbar.vue'
+  import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+  } from '@/components/ui/table'
+  import { DEFAULT_PAGE_SIZE } from '@/constants/app'
+  import { cn } from '@/lib/utils'
+  import type {
+    ColumnFiltersState,
+    OnChangeFn,
+    RowData,
+    PaginationState,
+  } from '@tanstack/vue-table'
+  import { FlexRender, useTable } from '@tanstack/vue-table'
+  import { toRef, ref } from 'vue'
+  import { useRoute, useRouter } from 'vue-router'
+
+  import { roles } from '@/views/admin/users/data/data.ts'
+
+  defineOptions({ inheritAttrs: false })
+
+  const props = defineProps<DataTableProps<T>>()
+
+  const route = useRoute()
+  const router = useRouter()
+
+  const columnFiltersCfg: ColumnFilters = [
+    // username per-column text filter
+    { columnId: 'username', searchKey: 'username', type: 'string' },
+    { columnId: 'status', searchKey: 'status', type: 'array' },
+    { columnId: 'role', searchKey: 'role', type: 'array' },
+  ]
+
+  const pageKey = 'page'
+  const pageSizeKey = 'pageSize'
+  const defaultPage = 1
+  const defaultPageSize = DEFAULT_PAGE_SIZE
+  const globalFilterKey = 'filter'
+  const globalFilterEnabled = false
+  const trimGlobal = true
+
+  type SearchRecord = Record<string, unknown>
+  type QueryRecord = Record<string, string>
+
+  const search = route.query
+
+  // Build initial column filters from the current search params
+  const collected: ColumnFiltersState = []
+  for (const cfg of columnFiltersCfg) {
+    const raw = (search as SearchRecord)[cfg.searchKey]
+    const deserialize = cfg.deserialize ?? ((v: unknown) => v)
+    if (cfg.type === 'string') {
+      const value = (deserialize(raw) as string) ?? ''
+      if (typeof value === 'string' && value.trim() !== '') {
+        collected.push({ id: cfg.columnId, value })
+      }
+    } else {
+      // default to array type
+      const array = raw ? (Array.isArray(raw) ? raw : [raw]) : undefined
+      const value = (deserialize(array) as unknown[]) ?? []
+      if (Array.isArray(value) && value.length > 0) {
+        collected.push({ id: cfg.columnId, value })
+      }
+    }
+  }
+  const columnFilters = ref<ColumnFiltersState>(collected)
+
+  // Init pagination
+  const rawPage = (search as QueryRecord)[pageKey]
+  const rawPageSize = (search as QueryRecord)[pageSizeKey]
+  const pageNum = Number(rawPage) || defaultPage
+  const pageSizeNum = Number(rawPageSize) || defaultPageSize
+  const pagination = ref<PaginationState>({
+    pageIndex: Math.max(0, pageNum - 1),
+    pageSize: pageSizeNum,
+  })
+
+  const onPaginationChange: OnChangeFn<PaginationState> = (updater) => {
+    const next = typeof updater === 'function' ? updater(pagination.value) : updater
+    const nextPage = next.pageIndex + 1
+    const nextPageSize = next.pageSize
+    pagination.value = next
+    router.push({
+      path: route.path,
+      query: {
+        ...(route.query as QueryRecord),
+        [pageKey]: nextPage <= defaultPage ? undefined : nextPage,
+        [pageSizeKey]: nextPageSize === defaultPageSize ? undefined : nextPageSize,
+      },
+    })
+  }
+
+  let gf: string | undefined = undefined
+  if (globalFilterEnabled) {
+    const raw = (search as SearchRecord)[globalFilterKey]
+    gf = typeof raw === 'string' ? raw : ''
+  }
+  const globalFilter = ref<string | undefined>(gf)
+
+  const onGlobalFilterChange: OnChangeFn<string> | undefined = globalFilterEnabled
+    ? (updater) => {
+        const next = typeof updater === 'function' ? updater(globalFilter.value ?? '') : updater
+        const value = trimGlobal ? next.trim() : next
+        globalFilter.value = value
+        router.push({
+          path: route.path,
+          query: {
+            ...(route.query as QueryRecord),
+            [pageKey]: undefined,
+            [globalFilterKey]: value ? value : undefined,
+          },
+        })
+      }
+    : undefined
+
+  const onColumnFiltersChange: OnChangeFn<ColumnFiltersState> = (updater) => {
+    const next = typeof updater === 'function' ? updater(columnFilters.value) : updater
+    columnFilters.value = next
+
+    const patch: Record<string, unknown> = {}
+
+    for (const cfg of columnFiltersCfg) {
+      const found = next.find((f) => f.id === cfg.columnId)
+      const serialize = cfg.serialize ?? ((v: unknown) => v)
+      if (cfg.type === 'string') {
+        const value = typeof found?.value === 'string' ? (found.value as string) : ''
+        patch[cfg.searchKey] = value.trim() !== '' ? serialize(value) : undefined
+      } else {
+        const value = Array.isArray(found?.value) ? (found!.value as unknown[]) : []
+        patch[cfg.searchKey] = value.length > 0 ? serialize(value) : undefined
+      }
+    }
+    router.push({
+      path: route.path,
+      query: {
+        ...(route.query as QueryRecord),
+        [pageKey]: undefined,
+        ...(patch as QueryRecord),
+      },
+    })
+  }
+
+  const ensurePageInRange = (
+    pageCount: number,
+    opts: { resetTo?: 'first' | 'last' } = { resetTo: 'first' }
+  ) => {
+    const currentPage = (search as QueryRecord)[pageKey]
+    const pageNum = Number(currentPage) || defaultPage
+    if (pageCount > 0 && pageNum > pageCount) {
+      router.push({
+        replace: true,
+        path: route.path,
+        query: {
+          ...(route.query as QueryRecord),
+          [pageKey]: opts.resetTo === 'last' ? pageCount : undefined,
+        },
+      })
+    }
+  }
+
+  const table = useTable({
+    data: props.data,
+    columns: props.columns,
+    features,
+    enableRowSelection: true,
+    state: {
+      get columnFilters() {
+        return columnFilters.value
+      },
+      get globalFilter() {
+        return globalFilter.value
+      },
+      get pagination() {
+        return pagination.value
+      },
+    },
+    onColumnFiltersChange,
+    onGlobalFilterChange,
+    onPaginationChange,
+  })
+
+  const loading = toRef(props, 'loading')
+
+  ensurePageInRange(table.getPageCount())
+</script>
+
+<template>
+  <div
+    :class="
+      cn(
+        `max-sm:has-[div[role='toolbar']]:mb-16`, // Add margin bottom to the table on mobile when the toolbar is visible
+        'flex flex-1 flex-col gap-4'
+      )
+    "
+  >
+    <DataTableToolbar
+      :table="table"
+      search-placeholder="Filter users..."
+      search-key="name"
+      :filters="[
+        {
+          columnId: 'status',
+          title: 'Status',
+          options: [
+            { label: 'Active', value: 'active' },
+            { label: 'Inactive', value: 'inactive' },
+          ],
+        },
+        {
+          columnId: 'role',
+          title: 'Role',
+          options: roles.map((role) => ({ ...role })),
+        },
+      ]"
+    />
+    <div class="overflow-hidden rounded-md border">
+      <Table
+        v-bind="$attrs"
+        :aria-busy="loading || undefined"
+      >
+        <TableHeader>
+          <TableRow
+            v-for="headerGroup in table.getHeaderGroups()"
+            :key="headerGroup.id"
+            class="group/row"
+          >
+            <TableHead
+              v-for="header in headerGroup.headers"
+              :key="header.id"
+              :colspan="header.colSpan"
+              :class="
+                cn(
+                  'bg-background group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted',
+                  header.column.columnDef.meta?.class,
+                  header.column.columnDef.meta?.thClass
+                )
+              "
+            >
+              <FlexRender
+                v-if="!header.isPlaceholder"
+                :header="header"
+              />
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody v-if="!loading">
+          <template v-if="table.getRowModel().rows?.length">
+            <TableRow
+              v-for="row in table.getRowModel().rows"
+              :key="row.id"
+              :data-state="row.getIsSelected() && 'selected'"
+              class="group/row"
+            >
+              <TableCell
+                v-for="cell in row.getVisibleCells()"
+                :key="cell.id"
+                :class="
+                  cn(
+                    'bg-background group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted',
+                    cell.column.columnDef.meta?.class,
+                    cell.column.columnDef.meta?.tdClass
+                  )
+                "
+              >
+                <FlexRender :cell="cell" />
+              </TableCell>
+            </TableRow>
+          </template>
+          <TableRow v-else>
+            <TableCell
+              :colspan="table.getAllColumns().length"
+              class="h-24 text-center"
+            >
+              No results.
+            </TableCell>
+          </TableRow>
+        </TableBody>
+        <TableBody v-else>
+          <TableRow>
+            <TableCell
+              :colspan="table.getAllColumns().length"
+              class="h-24 text-center shimmer"
+            >
+              Loading…
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+    <DataTablePagination
+      v-if="!loading && table.getRowCount()"
+      :table="table"
+      class="mt-auto"
+    />
+    <!-- <DataTableBulkActions table={table} /> -->
+  </div>
+</template>

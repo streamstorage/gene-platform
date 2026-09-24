@@ -2,11 +2,15 @@
   import { AppSidebar } from './app-sidebar'
   import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
   import { cn } from '@/lib/utils'
+
+  const props = defineProps({
+    isAdmin: { type: Boolean, default: false },
+  })
 </script>
 
 <template>
   <SidebarProvider :default-open="true">
-    <AppSidebar />
+    <AppSidebar :is-admin="props.isAdmin" />
     <SidebarInset
       :class="
         cn(

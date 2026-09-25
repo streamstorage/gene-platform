@@ -2,37 +2,13 @@ import { callTypes, roles } from '../data/data'
 import { type User } from '../data/schema'
 import RowActions from './RowActions.vue'
 import type { DataTableColumnDef } from '@/components/data-table'
-import { DataTableColumnHeader } from '@/components/data-table'
+import { createSelectColumn, DataTableColumnHeader } from '@/components/data-table'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { h } from 'vue'
 
 export const usersColumns: DataTableColumnDef<User>[] = [
-  {
-    id: 'select',
-    header: ({ table }) =>
-      h(Checkbox, {
-        modelValue:
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && 'indeterminate'),
-        'onUpdate:modelValue': (value) => table.toggleAllPageRowsSelected(!!value),
-        ariaLabel: 'Select all',
-        class: 'translate-y-0.5',
-      }),
-    meta: {
-      class: cn('inset-s-0 z-10 rounded-tl-[inherit] max-md:sticky'),
-    },
-    cell: ({ row }) =>
-      h(Checkbox, {
-        modelValue: row.getIsSelected(),
-        'onUpdate:modelValue': (value) => row.toggleSelected(!!value),
-        'aria-label': 'Select row',
-        class: 'translate-y-0.5',
-      }),
-    enableSorting: false,
-    enableHiding: false,
-  },
+  createSelectColumn<User>(),
   {
     id: 'rowNumber',
     header: ({ column }) => h(DataTableColumnHeader<User>, { column, title: '#' }),

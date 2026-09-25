@@ -2,19 +2,33 @@
   import BulkActions from './components/BulkActions.vue'
   import { usersColumns } from './components/columns'
   import { roles, status } from './data/data'
+  import { type User } from './data/schema'
   import { users } from './data/users'
   import Main from '@/components/Main.vue'
-  import { DataTable, DataTableBulkActions, DataTableToolbar } from '@/components/data-table'
+  import {
+    type ColumnFilters,
+    DataTable,
+    DataTableBulkActions,
+    DataTableToolbar,
+  } from '@/components/data-table'
   import { Button } from '@/components/ui/button'
   import { MailPlus, UserPlus } from '@lucide/vue'
   import { onMounted, ref } from 'vue'
   import { sleep } from '@/lib/utils'
 
   const loading = ref(false)
+  const data = ref<User[]>([])
+  const columnFilaters: ColumnFilters = [
+    // username per-column text filter
+    { columnId: 'username', searchKey: 'username', type: 'string' },
+    { columnId: 'status', searchKey: 'status', type: 'array' },
+    { columnId: 'role', searchKey: 'role', type: 'array' },
+  ]
 
   onMounted(async () => {
     loading.value = true
     await sleep(1000)
+    data.value = users
     loading.value = false
   })
 </script>
@@ -37,9 +51,10 @@
       </div>
     </div>
     <DataTable
-      :data="users"
+      :data="data"
       :columns="usersColumns"
       :loading="loading"
+      :column-filters="columnFilaters"
     >
       <template #toolbar="{ table }">
         <DataTableToolbar

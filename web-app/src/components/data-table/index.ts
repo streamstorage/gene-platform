@@ -1,3 +1,5 @@
+import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
 import type { Column, ColumnDef, Row, RowData, Table } from '@tanstack/vue-table'
 import {
   createFacetedRowModel,
@@ -19,6 +21,7 @@ import {
   createSortedRowModel,
   tableFeatures,
 } from '@tanstack/vue-table'
+import { h } from 'vue'
 
 export type ColumnFilters = Array<
   | {
@@ -80,10 +83,40 @@ export type DataTableColumnDef<T extends RowData, TValue = unknown> = ColumnDef<
 export type DataTableInstance<T extends RowData> = Table<typeof features, T>
 export type DataTableRow<T extends RowData> = Row<typeof features, T>
 
+// To use global filter, unset 'searchKey' in DataTableToolbar
 export interface DataTableProps<T extends RowData> {
   columns: DataTableColumnDef<T>[]
   data: readonly T[]
   loading?: boolean
+  columnFilters?: ColumnFilters
+  enableGlobalFilter?: boolean
+}
+
+export function createSelectColumn<T extends RowData>(): DataTableColumnDef<T> {
+  return {
+    id: 'select',
+    header: ({ table }) =>
+      h(Checkbox, {
+        modelValue:
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && 'indeterminate'),
+        'onUpdate:modelValue': (value) => table.toggleAllPageRowsSelected(!!value),
+        ariaLabel: 'Select all',
+        class: 'translate-y-0.5',
+      }),
+    meta: {
+      class: cn('inset-s-0 z-10 rounded-tl-[inherit] max-md:sticky'),
+    },
+    cell: ({ row }) =>
+      h(Checkbox, {
+        modelValue: row.getIsSelected(),
+        'onUpdate:modelValue': (value) => row.toggleSelected(!!value),
+        'aria-label': 'Select row',
+        class: 'translate-y-0.5',
+      }),
+    enableSorting: false,
+    enableHiding: false,
+  }
 }
 
 export { default as DataTable } from './DataTable.vue'

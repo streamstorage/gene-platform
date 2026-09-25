@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends RowData">
-  import { type ColumnFilters, type DataTableProps, type DataTableInstance, features } from '.'
+  import { type DataTableProps, type DataTableInstance, features } from '.'
   import DataTablePagination from './DataTablePagination.vue'
   import {
     Table,
@@ -18,7 +18,7 @@
     PaginationState,
   } from '@tanstack/vue-table'
   import { FlexRender, useTable } from '@tanstack/vue-table'
-  import { toRef, ref } from 'vue'
+  import { ref, toRef, watch } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
 
   defineOptions({ inheritAttrs: false })
@@ -30,28 +30,26 @@
 
   const props = defineProps<DataTableProps<T>>()
 
-  const route = useRoute()
-  const router = useRouter()
-
-  const columnFiltersCfg: ColumnFilters = [
-    // username per-column text filter
-    { columnId: 'username', searchKey: 'username', type: 'string' },
-    { columnId: 'status', searchKey: 'status', type: 'array' },
-    { columnId: 'role', searchKey: 'role', type: 'array' },
-  ]
+  const columnFiltersCfg = props.columnFilters ?? []
 
   const pageKey = 'page'
   const pageSizeKey = 'pageSize'
   const defaultPage = 1
   const defaultPageSize = DEFAULT_PAGE_SIZE
   const globalFilterKey = 'filter'
-  const globalFilterEnabled = false
+  const globalFilterEnabled = props.enableGlobalFilter
   const trimGlobal = true
 
   type SearchRecord = Record<string, unknown>
   type QueryRecord = Record<string, string>
 
+  const router = useRouter()
+  const route = useRoute()
   const search = route.query
+
+  const query = ref({
+    ...(search as SearchRecord),
+  })
 
   // Build initial column filters from the current search params
   const collected: ColumnFiltersState = []
@@ -89,13 +87,15 @@
     const nextPage = next.pageIndex + 1
     const nextPageSize = next.pageSize
     pagination.value = next
+
+    query.value = {
+      ...query.value,
+      [pageKey]: nextPage <= defaultPage ? undefined : nextPage,
+      [pageSizeKey]: nextPageSize === defaultPageSize ? undefined : nextPageSize,
+    }
     router.push({
       path: route.path,
-      query: {
-        ...(route.query as QueryRecord),
-        [pageKey]: nextPage <= defaultPage ? undefined : nextPage,
-        [pageSizeKey]: nextPageSize === defaultPageSize ? undefined : nextPageSize,
-      },
+      query: { ...(query.value as QueryRecord) },
     })
   }
 
@@ -111,13 +111,15 @@
         const next = typeof updater === 'function' ? updater(globalFilter.value ?? '') : updater
         const value = trimGlobal ? next.trim() : next
         globalFilter.value = value
+        pagination.value.pageIndex = 0
+        query.value = {
+          ...query.value,
+          [pageKey]: undefined,
+          [globalFilterKey]: value ? value : undefined,
+        }
         router.push({
           path: route.path,
-          query: {
-            ...(route.query as QueryRecord),
-            [pageKey]: undefined,
-            [globalFilterKey]: value ? value : undefined,
-          },
+          query: { ...(query.value as QueryRecord) },
         })
       }
     : undefined
@@ -139,38 +141,48 @@
         patch[cfg.searchKey] = value.length > 0 ? serialize(value) : undefined
       }
     }
+    pagination.value.pageIndex = 0
+    query.value = {
+      ...query.value,
+      [pageKey]: undefined,
+      ...(patch as QueryRecord),
+    }
     router.push({
       path: route.path,
-      query: {
-        ...(route.query as QueryRecord),
-        [pageKey]: undefined,
-        ...(patch as QueryRecord),
-      },
+      query: { ...(query.value as QueryRecord) },
     })
   }
 
   const ensurePageInRange = (
-    pageCount: number,
+    table: DataTableInstance<T>,
     opts: { resetTo?: 'first' | 'last' } = { resetTo: 'last' }
   ) => {
+    const pageCount = table.getPageCount()
     const currentPage = (search as QueryRecord)[pageKey]
     const pageNum = Number(currentPage) || defaultPage
     if (pageCount > 0 && pageNum > pageCount) {
+      if (opts.resetTo === 'last') {
+        table.lastPage()
+      } else {
+        table.firstPage()
+      }
+      query.value = {
+        ...query.value,
+        [pageKey]: opts.resetTo === 'last' ? pageCount : undefined,
+      }
       router.replace({
         path: route.path,
-        query: {
-          ...(route.query as QueryRecord),
-          [pageKey]: opts.resetTo === 'last' ? pageCount : undefined,
-        },
+        query: { ...(query.value as QueryRecord) },
       })
     }
   }
 
   const table = useTable({
-    data: props.data,
+    data: toRef(props, 'data'),
     columns: props.columns,
     features,
     enableRowSelection: true,
+    autoResetPageIndex: false,
     state: {
       get columnFilters() {
         return columnFilters.value
@@ -189,7 +201,14 @@
 
   const loading = toRef(props, 'loading')
 
-  ensurePageInRange(table.getPageCount())
+  watch(
+    () => table.getRowCount(),
+    (val) => {
+      if (val) {
+        ensurePageInRange(table)
+      }
+    }
+  )
 </script>
 
 <template>

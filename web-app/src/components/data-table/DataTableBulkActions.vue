@@ -68,7 +68,6 @@
               @click="handleClearSelection"
               class="size-6 rounded-full"
               aria-label="Clear selection"
-              title="Clear selection"
             >
               <X />
               <span class="sr-only">Clear selection</span>

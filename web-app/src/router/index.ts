@@ -38,6 +38,11 @@ const routes: Array<RouteRecordRaw> = [
         name: 'Dashboard',
         component: () => import('@/views/app/Dashboard.vue'),
       },
+      {
+        path: '/app/samples',
+        name: 'Samples',
+        component: () => import('@/views/app/samples/Users.vue'),
+      },
     ],
   },
   {

@@ -119,6 +119,30 @@ export function createSelectColumn<T extends RowData>(): DataTableColumnDef<T> {
   }
 }
 
+export function createRadioSelectColumn<T extends RowData>(): DataTableColumnDef<T> {
+  return {
+    id: 'select',
+    header: ({ table }) =>
+      h(Checkbox, {
+        modelValue:
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && 'indeterminate'),
+        'onUpdate:modelValue': (value) => table.toggleAllPageRowsSelected(!!value),
+        ariaLabel: 'Select all',
+        class: 'translate-y-0.5',
+      }),
+    cell: ({ row }) =>
+      h(Checkbox, {
+        modelValue: row.getIsSelected(),
+        'onUpdate:modelValue': (value) => row.toggleSelected(!!value),
+        'aria-label': 'Select row',
+        class: 'translate-y-0.5',
+      }),
+    enableSorting: false,
+    enableHiding: false,
+  }
+}
+
 export { default as DataTable } from './DataTable.vue'
 export { default as DataTableBulkActions } from './DataTableBulkActions.vue'
 export { default as DataTableColumnHeader } from './DataTableColumnHeader.vue'

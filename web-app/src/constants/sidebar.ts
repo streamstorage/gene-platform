@@ -3,6 +3,7 @@ import {
   CircleChevronLeft,
   Columns3Cog,
   Construction,
+  Dices,
   Flower,
   LayoutDashboard,
   Palette,
@@ -19,6 +20,11 @@ export const navGroups: NavGroup[] = [
         title: 'Dashboard',
         url: '/app/dashboard',
         icon: LayoutDashboard,
+      },
+      {
+        title: 'Samples',
+        url: '/app/samples',
+        icon: Dices,
       },
       {
         title: 'Secured by Clerk',

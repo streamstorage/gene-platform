@@ -16,7 +16,9 @@ pub fn config(cfg: &mut web::ServiceConfig) {
                 web::scope("/user")
                     .wrap(api_auth::CheckLogin)
                     .service(web::resource("/profile").route(web::get().to(user::get_profile)))
-                    .service(web::resource("/password").route(web::put().to(user::update_password))),
+                    .service(
+                        web::resource("/password").route(web::put().to(user::update_password)),
+                    ),
             )
             .service(
                 web::scope("/admin")

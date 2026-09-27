@@ -1,35 +1,45 @@
 <script setup lang="ts">
+  import { usersApi } from '@/api'
   import BulkActions from './components/BulkActions.vue'
   import { usersColumns } from './components/columns'
   import { roles, status } from './data/data'
   import { type User } from './data/schema'
-  import { users } from './data/users'
   import Main from '@/components/Main.vue'
   import {
     type ColumnFilters,
     DataTable,
     DataTableBulkActions,
     DataTableToolbar,
+    type DataTableToolbarFilter,
   } from '@/components/data-table'
   import { Button } from '@/components/ui/button'
-  import { MailPlus, UserPlus } from '@lucide/vue'
+  import { UserPlus } from '@lucide/vue'
   import { onMounted, ref } from 'vue'
-  import { sleep } from '@/lib/utils'
+  import { toast } from 'vue-sonner'
 
   const loading = ref(false)
   const data = ref<User[]>([])
-  const columnFilaters: ColumnFilters = [
-    // username per-column text filter
-    { columnId: 'username', searchKey: 'username', type: 'string' },
-    { columnId: 'status', searchKey: 'status', type: 'array' },
-    { columnId: 'role', searchKey: 'role', type: 'array' },
+  const columnFilters: ColumnFilters = [
+    // per-column text filter
+    { columnId: 'name', searchKey: 'name' },
+    { columnId: 'active', searchKey: 'status', deserialize: (val: unknown) => val == 'true' },
+    { columnId: 'role', searchKey: 'role', deserialize: (val: unknown) => Number(val) },
   ]
+  const toolbarFilters = [
+    { columnId: 'active', title: 'Status', options: status.map((s) => ({ ...s })) },
+    { columnId: 'role', title: 'Role', options: roles.map((role) => ({ ...role })) },
+  ] satisfies DataTableToolbarFilter[]
 
+  const { listAll } = usersApi
   onMounted(async () => {
     loading.value = true
-    await sleep(1000)
-    data.value = users
-    loading.value = false
+    try {
+      data.value = await listAll()
+    } catch (err) {
+      toast.error(err instanceof Error ? `${err.name}: ${err.message}` : String(err))
+    } finally {
+      loading.value = false
+    }
   })
 </script>
 
@@ -41,12 +51,6 @@
         <p class="text-muted-foreground">Manage your users and their roles here.</p>
       </div>
       <div class="flex gap-2">
-        <Button
-          variant="outline"
-          class="space-x-1"
-        >
-          <span>Invite User</span> <MailPlus :size="18" />
-        </Button>
         <Button class="space-x-1"> <span>Add User</span> <UserPlus :size="18" /> </Button>
       </div>
     </div>
@@ -54,25 +58,14 @@
       :data="data"
       :columns="usersColumns"
       :loading="loading"
-      :column-filters="columnFilaters"
+      :column-filters="columnFilters"
     >
       <template #toolbar="{ table }">
         <DataTableToolbar
           :table="table"
           search-placeholder="Filter users..."
           search-key="name"
-          :filters="[
-            {
-              columnId: 'status',
-              title: 'Status',
-              options: status.map((s) => ({ ...s })),
-            },
-            {
-              columnId: 'role',
-              title: 'Role',
-              options: roles.map((role) => ({ ...role })),
-            },
-          ]"
+          :filters="toolbarFilters"
         />
       </template>
       <template #bulk-actions="{ table }">

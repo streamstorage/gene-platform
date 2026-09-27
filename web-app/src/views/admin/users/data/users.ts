@@ -8,13 +8,14 @@ export const users = Array.from({ length: 500 }, () => {
   const firstName = faker.person.firstName()
   const lastName = faker.person.lastName()
   return {
-    id: faker.string.uuid(),
+    id: faker.number.int(),
     name: `${firstName} ${lastName}`,
     email: faker.internet.email({ firstName }).toLocaleLowerCase(),
     notes: faker.person.jobDescriptor(),
-    status: faker.helpers.arrayElement(['active', 'inactive']),
-    role: faker.helpers.arrayElement(['admin', 'user']),
-    createdAt: faker.date.past(),
-    updatedAt: faker.date.recent(),
+    active: faker.helpers.arrayElement([true, false]),
+    role: faker.helpers.arrayElement([2, 0]),
+    last_seen: faker.date.recent(),
+    created_at: faker.date.past(),
+    updated_at: faker.date.recent(),
   }
 }) satisfies User[]

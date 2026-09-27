@@ -1,4 +1,4 @@
-import { callTypes, roles } from '../data/data'
+import { roles, statusColor } from '../data/data'
 import { type User } from '../data/schema'
 import RowActions from './RowActions.vue'
 import type { DataTableColumnDef } from '@/components/data-table'
@@ -46,7 +46,7 @@ export const usersColumns: DataTableColumnDef<User>[] = [
     header: ({ column }) => h(DataTableColumnHeader<User>, { column, title: 'Status' }),
     cell: ({ row }) => {
       const { status } = row.original
-      const badgeColor = callTypes.get(status)
+      const badgeColor = statusColor.get(status)
       return h(
         'div',
         { class: 'flex space-x-2' },

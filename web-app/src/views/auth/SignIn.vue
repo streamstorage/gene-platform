@@ -11,11 +11,17 @@
   } from '@/components/ui/card'
   import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
   import { Input } from '@/components/ui/input'
+  import { useAuthStore } from '@/stores/auth'
   import { Loader2, LogIn } from '@lucide/vue'
   import { toTypedSchema } from '@vee-validate/zod'
   import { useForm } from 'vee-validate'
   import { ref } from 'vue'
+  import { useRouter } from 'vue-router'
+  import { toast } from 'vue-sonner'
   import { z } from 'zod'
+
+  const authStore = useAuthStore()
+  const { push } = useRouter()
 
   const isLoading = ref(false)
 
@@ -28,8 +34,18 @@
   const form = useForm({
     validationSchema: formSchema,
   })
-  const onSubmit = form.handleSubmit((values) => {
-    console.log('Form submitted!', values)
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    isLoading.value = true
+    try {
+      const user = await authStore.signIn(values.email, values.password)
+      toast.success(`Welcome back, ${user.name}!`)
+      push({ name: 'Dashboard' })
+    } catch (err) {
+      toast.error(err instanceof Error ? `${err.name}: ${err.message}` : String(err))
+    } finally {
+      isLoading.value = false
+    }
   })
 </script>
 

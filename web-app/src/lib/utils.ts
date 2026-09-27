@@ -74,3 +74,6 @@ export function getDisplayNameInitials(displayName: string): string {
   const last = parts[parts.length - 1]?.[0] ?? ''
   return (first + last).toUpperCase()
 }
+
+export const formatDateTime = (e: Date) =>
+  `${e.toLocaleDateString('en-CA')} ${e.toLocaleTimeString('en-US', { hour12: false })}`

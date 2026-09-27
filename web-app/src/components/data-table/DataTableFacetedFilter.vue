@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends RowData">
-  import type { DataTableColumn } from '.'
+  import type { DataTableColumn, FacetedFilterOption } from '.'
   import { cn } from '@/lib/utils'
   import { Badge } from '@/components/ui/badge'
   import { Button } from '@/components/ui/button'
@@ -16,24 +16,30 @@
   import { Separator } from '@/components/ui/separator'
   import { CheckIcon, CirclePlusIcon } from '@lucide/vue'
   import type { RowData } from '@tanstack/vue-table'
-  import { type Component, computed } from 'vue'
+  import { computed } from 'vue'
 
   interface DataTableFacetedFilterProps {
     column?: DataTableColumn<T>
     title?: string
-    options: {
-      label: string
-      value: string
-      icon?: Component
-    }[]
+    options: FacetedFilterOption[]
   }
 
   const props = defineProps<DataTableFacetedFilterProps>()
 
-  const selectedValues = computed(() => new Set(props.column?.getFilterValue() as string[]))
+  const selectedValues = computed(() => {
+    const values = props.column?.getFilterValue()
+    if (Array.isArray(values)) {
+      return new Set(values as unknown[])
+    } else if (values) {
+      return new Set([values] as unknown[])
+    } else {
+      return new Set([] as unknown[])
+    }
+  })
+
   const facets = computed(() => props.column?.getFacetedUniqueValues())
 
-  function handleSelect(option: { label: string; value: string; icon?: Component }) {
+  function handleSelect(option: FacetedFilterOption) {
     const isSelected = selectedValues.value.has(option.value)
     if (isSelected) {
       selectedValues.value.delete(option.value)
@@ -77,7 +83,7 @@
             <template v-else>
               <Badge
                 v-for="option in props.options.filter((option) => selectedValues.has(option.value))"
-                :key="option.value"
+                :key="option.value as string"
                 variant="secondary"
                 class="rounded-sm px-1 font-normal"
               >
@@ -99,7 +105,7 @@
           <CommandGroup>
             <CommandItem
               v-for="option in options"
-              :key="option.value"
+              :key="option.value as string"
               :value="option"
               @select="handleSelect(option)"
             >

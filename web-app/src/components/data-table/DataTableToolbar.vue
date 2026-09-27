@@ -17,7 +17,7 @@
       title: string
       options: {
         label: string
-        value: string
+        value: unknown
         icon?: Component
       }[]
     }[]

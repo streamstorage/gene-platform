@@ -52,31 +52,27 @@
   })
 
   // Build initial column filters from the current search params
-  const collected: ColumnFiltersState = []
+  const state: ColumnFiltersState = []
   for (const cfg of columnFiltersCfg) {
     const raw = (search as SearchRecord)[cfg.searchKey]
     const deserialize = cfg.deserialize ?? ((v: unknown) => v)
-    if (cfg.type === 'string') {
-      const value = (deserialize(raw) as string) ?? ''
-      if (typeof value === 'string' && value.trim() !== '') {
-        collected.push({ id: cfg.columnId, value })
-      }
-    } else {
-      // default to array type
-      const array = raw ? (Array.isArray(raw) ? raw : [raw]) : undefined
-      const value = (deserialize(array) as unknown[]) ?? []
-      if (Array.isArray(value) && value.length > 0) {
-        collected.push({ id: cfg.columnId, value })
+    if (Array.isArray(raw)) {
+      const value = raw.map((i) => deserialize(i))
+      state.push({ id: cfg.columnId, value })
+    } else if (raw) {
+      const value = deserialize(raw) ?? undefined
+      if (value !== undefined) {
+        state.push({ id: cfg.columnId, value: [value] })
       }
     }
   }
-  const columnFilters = ref<ColumnFiltersState>(collected)
+  const columnFilters = ref<ColumnFiltersState>(state)
 
   // Init pagination
-  const rawPage = (search as QueryRecord)[pageKey]
-  const rawPageSize = (search as QueryRecord)[pageSizeKey]
-  const pageNum = Number(rawPage) || defaultPage
-  const pageSizeNum = Number(rawPageSize) || defaultPageSize
+  const page = (search as QueryRecord)[pageKey]
+  const pageSize = (search as QueryRecord)[pageSizeKey]
+  const pageNum = Number(page) || defaultPage
+  const pageSizeNum = Number(pageSize) || defaultPageSize
   const pagination = ref<PaginationState>({
     pageIndex: Math.max(0, pageNum - 1),
     pageSize: pageSizeNum,
@@ -133,13 +129,7 @@
     for (const cfg of columnFiltersCfg) {
       const found = next.find((f) => f.id === cfg.columnId)
       const serialize = cfg.serialize ?? ((v: unknown) => v)
-      if (cfg.type === 'string') {
-        const value = typeof found?.value === 'string' ? (found.value as string) : ''
-        patch[cfg.searchKey] = value.trim() !== '' ? serialize(value) : undefined
-      } else {
-        const value = Array.isArray(found?.value) ? (found!.value as unknown[]) : []
-        patch[cfg.searchKey] = value.length > 0 ? serialize(value) : undefined
-      }
+      patch[cfg.searchKey] = serialize(found?.value) ?? undefined
     }
     pagination.value.pageIndex = 0
     query.value = {
@@ -166,14 +156,6 @@
       } else {
         table.firstPage()
       }
-      query.value = {
-        ...query.value,
-        [pageKey]: opts.resetTo === 'last' ? pageCount : undefined,
-      }
-      router.replace({
-        path: route.path,
-        query: { ...(query.value as QueryRecord) },
-      })
     }
   }
 

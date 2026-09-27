@@ -1,7 +1,8 @@
-import { type UserStatus } from './schema'
+import type { UserRole, UserStatus } from './schema'
+import type { FacetedFilterOption } from '@/components/data-table'
 import { Shield, UserCheck } from '@lucide/vue'
 
-export const callTypes = new Map<UserStatus, string>([
+export const statusColor = new Map<UserStatus, string>([
   ['active', 'bg-teal-100/30 text-teal-900 dark:text-teal-200 border-teal-200'],
   ['inactive', 'bg-neutral-300/40 border-neutral-300'],
 ])
@@ -9,7 +10,7 @@ export const callTypes = new Map<UserStatus, string>([
 export const status = [
   { label: 'Active', value: 'active' },
   { label: 'Inactive', value: 'inactive' },
-] as const
+] satisfies FacetedFilterOption<UserStatus>[]
 
 export const roles = [
   {
@@ -22,4 +23,4 @@ export const roles = [
     value: 'user',
     icon: UserCheck,
   },
-] as const
+] satisfies FacetedFilterOption<UserRole>[]

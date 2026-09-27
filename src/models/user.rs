@@ -1,6 +1,6 @@
 use crate::db::Connection;
-use crate::handlers::auth::Credential;
 use crate::schema::users;
+use crate::utils::to_ascii_lowercase;
 use bcrypt::{DEFAULT_COST, hash, verify};
 use chrono::NaiveDateTime;
 use diesel::{Identifiable, Insertable, Queryable, prelude::*};
@@ -13,26 +13,29 @@ use serde::{Deserialize, Serialize};
 pub struct User {
     pub id: i32,
     pub name: String,
+    #[serde(deserialize_with = "to_ascii_lowercase")]
     pub email: String,
     #[serde(skip_serializing)]
     pub password: String,
     pub role: i32,
     pub active: bool,
-    pub notes: String,
+    pub notes: Option<String>,
     pub last_seen: Option<NaiveDateTime>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(Insertable, Serialize, Deserialize)]
+#[derive(Insertable, Deserialize)]
 #[diesel(table_name = users)]
 pub struct NewUser {
     pub name: String,
+    #[serde(deserialize_with = "to_ascii_lowercase")]
     pub email: String,
     pub password: String,
     pub role: i32,
+    #[serde(default)]
     pub active: bool,
-    pub notes: String,
+    pub notes: Option<String>,
 }
 
 impl NewUser {
@@ -43,12 +46,12 @@ impl NewUser {
             password: password.to_string(),
             role: 2,
             active: true,
-            notes: String::new(),
+            notes: None,
         }
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 pub struct NewPassword {
     pub current_password: String,
     pub new_password: String,
@@ -60,17 +63,17 @@ fn encrypt_password(password: &str) -> String {
 
 impl User {
     pub async fn login(
-        cred: Credential,
+        email: &str,
+        password: &str,
         conn: &mut Connection,
     ) -> Result<Option<User>, diesel::result::Error> {
         let user = users::table
-            .filter(users::dsl::email.eq(cred.email.to_ascii_lowercase()))
-            .filter(users::dsl::active.eq(true))
+            .filter(users::dsl::email.eq(email))
             .get_result::<User>(conn)
             .await
             .optional()?;
         if let Some(user) = user
-            && let Ok(val) = verify(&cred.password, &user.password)
+            && let Ok(val) = verify(password, &user.password)
             && val
         {
             return Ok(Some(user));
@@ -78,14 +81,11 @@ impl User {
         Ok(None)
     }
 
-    pub async fn update_last_seen(
-        user_id: i32,
-        conn: &mut Connection,
-    ) -> QueryResult<usize> {
+    pub async fn update_last_seen(user_id: i32, conn: &mut Connection) -> QueryResult<usize> {
         diesel::update(users::table.find(user_id))
-                .set(users::dsl::last_seen.eq(diesel::dsl::now))
-                .execute(conn)
-                .await
+            .set(users::dsl::last_seen.eq(diesel::dsl::now))
+            .execute(conn)
+            .await
     }
 
     pub async fn is_active(user_id: i32, conn: &mut Connection) -> bool {
@@ -115,11 +115,11 @@ impl User {
         conn: &mut Connection,
     ) -> Result<usize, diesel::result::Error> {
         let new_user = NewUser {
-            email: user.email.to_ascii_lowercase(),
+            email: user.email,
             name: user.name,
             password: encrypt_password(&user.password),
             role: user.role,
-            active: user.active,
+            active: true,
             notes: user.notes,
         };
         diesel::insert_into(users::table)
@@ -155,9 +155,8 @@ impl User {
             diesel::update(users::table.find(user_id))
                 .set((
                     users::dsl::name.eq(user.name),
-                    users::dsl::email.eq(user.email.to_ascii_lowercase()),
+                    users::dsl::email.eq(user.email),
                     users::dsl::role.eq(user.role),
-                    users::dsl::active.eq(user.active),
                     users::dsl::notes.eq(user.notes),
                 ))
                 .execute(conn)
@@ -166,10 +165,9 @@ impl User {
             diesel::update(users::table.find(user_id))
                 .set((
                     users::dsl::name.eq(user.name),
-                    users::dsl::email.eq(user.email.to_ascii_lowercase()),
+                    users::dsl::email.eq(user.email),
                     users::dsl::password.eq(encrypt_password(&user.password)),
                     users::dsl::role.eq(user.role),
-                    users::dsl::active.eq(user.active),
                     users::dsl::notes.eq(user.notes),
                 ))
                 .execute(conn)

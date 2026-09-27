@@ -1,4 +1,4 @@
-import { callTypes, roles } from '../data/data'
+import { roles, status } from '../data/data'
 import { type User } from '../data/schema'
 import RowActions from './RowActions.vue'
 import type { DataTableColumnDef } from '@/components/data-table'
@@ -42,11 +42,11 @@ export const usersColumns: DataTableColumnDef<User>[] = [
     enableSorting: false,
   },
   {
-    accessorKey: 'status',
+    accessorKey: 'active',
     header: ({ column }) => h(DataTableColumnHeader<User>, { column, title: 'Status' }),
     cell: ({ row }) => {
-      const { status } = row.original
-      const badgeColor = callTypes.get(status)
+      const { active } = row.original
+      const item = status.find(({ value }) => value === active)
       return h(
         'div',
         { class: 'flex space-x-2' },
@@ -54,9 +54,9 @@ export const usersColumns: DataTableColumnDef<User>[] = [
           Badge,
           {
             variant: 'outline',
-            class: cn('capitalize', badgeColor),
+            class: cn('capitalize', item?.style),
           },
-          () => row.getValue('status')
+          () => item?.label
         )
       )
     },
@@ -72,20 +72,13 @@ export const usersColumns: DataTableColumnDef<User>[] = [
     header: ({ column }) => h(DataTableColumnHeader<User>, { column, title: 'Role' }),
     cell: ({ row }) => {
       const { role } = row.original
-      const userType = roles.find(({ value }) => value === role)
-
-      if (!userType) {
-        return null
-      }
+      const item = roles.find(({ value }) => value === role)
 
       return h('div', { class: 'flex items-center gap-x-2' }, [
-        userType.icon && h(userType.icon, { class: 'text-muted-foreground', size: 16 }),
-        h('span', { class: 'text-sm capitalize' }, () => row.getValue('role')),
+        item?.icon && h(item.icon, { class: 'text-muted-foreground', size: 16 }),
+        h('span', { class: 'text-sm capitalize' }, () => item?.label),
       ])
     },
-    // filterFn: (row, id, value) => {
-    //   return value.includes(row.getValue(id))
-    // },
     filterFn: 'arrHas',
     enableSorting: false,
     enableHiding: false,

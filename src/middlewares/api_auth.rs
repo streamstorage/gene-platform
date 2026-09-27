@@ -62,6 +62,12 @@ where
                     let res = service.call(request);
                     // forwarded responses map to "left" body
                     return res.await.map(ServiceResponse::map_into_left_body);
+                } else {
+                    let (request, _pl) = request.into_parts();
+                    let response = HttpResponse::Forbidden()
+                        .body("forbidden")
+                        .map_into_right_body();
+                    return Ok(ServiceResponse::new(request, response));
                 }
             }
             let (request, _pl) = request.into_parts();
@@ -124,6 +130,12 @@ where
                     let res = service.call(request);
                     // forwarded responses map to "left" body
                     return res.await.map(ServiceResponse::map_into_left_body);
+                } else {
+                    let (request, _pl) = request.into_parts();
+                    let response = HttpResponse::Forbidden()
+                        .body("forbidden")
+                        .map_into_right_body();
+                    return Ok(ServiceResponse::new(request, response));
                 }
             }
             let (request, _pl) = request.into_parts();

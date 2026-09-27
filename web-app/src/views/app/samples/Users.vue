@@ -7,7 +7,12 @@
   import { type User } from './data/schema'
   import { users } from './data/users'
   import Main from '@/components/Main.vue'
-  import { type ColumnFilters, DataTable, DataTableToolbar } from '@/components/data-table'
+  import {
+    type ColumnFilters,
+    DataTable,
+    DataTableToolbar,
+    type DataTableToolbarFilter,
+  } from '@/components/data-table'
   import { Button } from '@/components/ui/button'
   import { MailPlus, UserPlus } from '@lucide/vue'
   import { onMounted, ref } from 'vue'
@@ -16,11 +21,15 @@
   const loading = ref(false)
   const data = ref<User[]>([])
   const columnFilaters: ColumnFilters = [
-    // username per-column text filter
-    { columnId: 'username', searchKey: 'username', type: 'string' },
-    { columnId: 'status', searchKey: 'status', type: 'array' },
-    { columnId: 'role', searchKey: 'role', type: 'array' },
+    // per-column text filter
+    { columnId: 'name', searchKey: 'name' },
+    { columnId: 'status', searchKey: 'status' },
+    { columnId: 'role', searchKey: 'role' },
   ]
+  const toolbarFilters = [
+    { columnId: 'status', title: 'Status', options: status.map((s) => ({ ...s })) },
+    { columnId: 'role', title: 'Role', options: roles.map((role) => ({ ...role })) },
+  ] satisfies DataTableToolbarFilter[]
 
   const showInviteDialog = ref(false)
   const showAddDialog = ref(false)
@@ -69,18 +78,7 @@
           :table="table"
           search-placeholder="Filter users..."
           search-key="name"
-          :filters="[
-            {
-              columnId: 'status',
-              title: 'Status',
-              options: status.map((s) => ({ ...s })),
-            },
-            {
-              columnId: 'role',
-              title: 'Role',
-              options: roles.map((role) => ({ ...role })),
-            },
-          ]"
+          :filters="toolbarFilters"
         />
       </template>
       <template #bulk-actions="{ table }">

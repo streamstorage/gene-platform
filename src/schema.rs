@@ -12,7 +12,7 @@ diesel::table! {
         role -> Integer,
         active -> Bool,
         #[max_length = 255]
-        notes -> Varchar,
+        notes -> Nullable<Varchar>,
         last_seen -> Nullable<Timestamp>,
         created_at -> Timestamp,
         updated_at -> Timestamp,

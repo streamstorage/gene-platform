@@ -64,8 +64,8 @@
             <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
               <Avatar class="h-8 w-8 rounded-lg">
                 <AvatarImage
-                  src="user.avatar"
-                  alt="user.name"
+                  :src="user.avatar"
+                  :alt="user.name"
                 />
                 <AvatarFallback class="rounded-lg">{{
                   getDisplayNameInitials(user.name)

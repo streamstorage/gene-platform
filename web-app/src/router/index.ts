@@ -1,5 +1,6 @@
 import AppLayout from '@/components/layouts/AppLayout.vue'
 import AuthLayout from '@/components/layouts/AuthLayout.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useNProgress } from '@vueuse/integrations/useNProgress'
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
@@ -101,8 +102,21 @@ const { start, done } = useNProgress(0.0, {
   showSpinner: false,
 })
 
-router.beforeEach(() => {
+router.beforeEach(async (to, _from) => {
   start()
+
+  const authStore = useAuthStore()
+  await authStore.getProfile()
+
+  if (
+    (to.meta && to.meta.guard == 'guest' && authStore.authenticated) ||
+    (to.meta && to.meta.guard == 'user' && !authStore.authenticated) ||
+    (to.meta &&
+      to.meta.guard == 'admin' &&
+      (!authStore.authenticated || !authStore.adminAuthorized))
+  ) {
+    return { name: 'index' }
+  }
 })
 
 router.afterEach(() => {

@@ -1,13 +1,22 @@
 <script setup lang="ts">
   import ConfirmDialog from './ConfirmDialog.vue'
+  import { useAuthStore } from '@/stores/auth'
   import { useRouter } from 'vue-router'
+  import { toast } from 'vue-sonner'
 
   const modelValue = defineModel<boolean>()
 
-  const router = useRouter()
-  const handleSignOut = () => {
+  const { push } = useRouter()
+  const authStore = useAuthStore()
+
+  const handleSignOut = async () => {
     modelValue.value = false
-    router.push('/')
+    try {
+      await authStore.signOut()
+      push('/')
+    } catch (err) {
+      toast.error(err instanceof Error ? `${err.name}: ${err.message}` : String(err))
+    }
   }
 </script>
 

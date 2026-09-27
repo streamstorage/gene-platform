@@ -6,8 +6,10 @@ CREATE TABLE `users` (
   `password` varchar(128) NOT NULL,
   `role` INT NOT NULL,
   `active` BOOLEAN NOT NULL,
-  `notes` varchar(255) NOT NULL,
+  `notes` varchar(255) NULL,
   `last_seen` TIMESTAMP NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+CREATE UNIQUE INDEX idx_email ON `users` (`email`);

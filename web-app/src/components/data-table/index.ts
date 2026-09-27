@@ -21,25 +21,28 @@ import {
   createSortedRowModel,
   tableFeatures,
 } from '@tanstack/vue-table'
+import type { Component } from 'vue'
 import { h } from 'vue'
 
-export type ColumnFilters = Array<
-  | {
-      columnId: string
-      searchKey: string
-      type?: 'string'
-      // Optional transformers for custom types
-      serialize?: (value: unknown) => unknown
-      deserialize?: (value: unknown) => unknown
-    }
-  | {
-      columnId: string
-      searchKey: string
-      type: 'array'
-      serialize?: (value: unknown) => unknown
-      deserialize?: (value: unknown) => unknown
-    }
->
+export type ColumnFilters = Array<{
+  columnId: string
+  searchKey: string
+  // Optional transformers for custom types
+  deserialize?: (value: unknown) => unknown
+  serialize?: (value: unknown) => unknown
+}>
+
+export interface FacetedFilterOption<T = unknown> {
+  label: string
+  value: T
+  icon?: Component
+}
+
+export interface DataTableToolbarFilter {
+  columnId: string
+  title: string
+  options: FacetedFilterOption[]
+}
 
 export const features = tableFeatures({
   columnFacetingFeature,

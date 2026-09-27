@@ -6,10 +6,11 @@
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuShortcut,
     DropdownMenuTrigger,
   } from '@/components/ui/dropdown-menu'
-  import { EllipsisIcon, UserPen } from '@lucide/vue'
+  import { EllipsisIcon, Trash2, UserPen } from '@lucide/vue'
 
   interface DataTableRowActionsProps {
     row: DataTableRow<User>
@@ -37,6 +38,13 @@
           Edit
           <DropdownMenuShortcut>
             <UserPen :size="16" />
+          </DropdownMenuShortcut>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem @click="">
+          {{ row.original.active ? 'Deactivate' : 'Activate' }}
+          <DropdownMenuShortcut>
+            <Trash2 :size="16" />
           </DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>

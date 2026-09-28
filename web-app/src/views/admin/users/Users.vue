@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import { usersApi } from '@/api'
   import BulkActions from './components/BulkActions.vue'
+  import UserActivateDialog from './components/UserActivateDialog.vue'
   import UserEditDialog from './components/UserEditDialog.vue'
   import { usersColumns } from './components/columns'
   import { roles, status } from './data/data'
@@ -10,7 +11,6 @@
   import {
     type ColumnFilters,
     DataTable,
-    DataTableBulkActions,
     DataTableToolbar,
     type DataTableToolbarFilter,
   } from '@/components/data-table'
@@ -38,7 +38,16 @@
     userToEdit.value = user
     userEditDialogOpen.value = true
   }
-  provide(userActionsKey, { openUserEditDialog })
+
+  const userActivateDialogOpen = ref(false)
+  const toActivate = ref(false)
+  const userToActivate = ref<Array<User>>([])
+  const openUserActivateDialog = (activate: boolean, users: Array<User>) => {
+    toActivate.value = activate
+    userToActivate.value = users
+    userActivateDialogOpen.value = true
+  }
+  provide(userActionsKey, { openUserEditDialog, openUserActivateDialog })
 
   const { listAll } = usersApi
   const refresh = async () => {
@@ -65,9 +74,26 @@
         <p class="text-muted-foreground">Manage your users and their roles here.</p>
       </div>
       <div class="flex gap-2">
-        <Button class="space-x-1" @click="openUserEditDialog(undefined)"> <span>Add User</span> <UserPlus :size="18" /> </Button>
+        <Button
+          class="space-x-1"
+          @click="openUserEditDialog(undefined)"
+        >
+          <span>Add User</span> <UserPlus :size="18" />
+        </Button>
       </div>
-      <UserEditDialog v-if="userEditDialogOpen" v-model="userEditDialogOpen" :user="userToEdit" @updated="refresh" />
+      <UserEditDialog
+        v-if="userEditDialogOpen"
+        v-model="userEditDialogOpen"
+        :user="userToEdit"
+        @updated="refresh"
+      />
+      <UserActivateDialog
+        v-if="userActivateDialogOpen"
+        v-model="userActivateDialogOpen"
+        :activate="toActivate"
+        :users="userToActivate"
+        @updated="refresh"
+      />
     </div>
     <DataTable
       :data="data"
@@ -84,12 +110,7 @@
         />
       </template>
       <template #bulk-actions="{ table }">
-        <DataTableBulkActions
-          :table="table"
-          entity-name="user"
-        >
-          <BulkActions :table="table" />
-        </DataTableBulkActions>
+        <BulkActions :table="table" />
       </template>
     </DataTable>
   </Main>

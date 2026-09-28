@@ -62,3 +62,19 @@ pub async fn update_user(
         Err(e) => Err(ServiceError::internal_error(e).into()),
     }
 }
+
+pub async fn activate_users(Json(ids): Json<Vec<i32>>, pool: Data<Pool>) -> Result<HttpResponse> {
+    let mut conn = pool.get().await.map_err(ServiceError::pool_error)?;
+    match User::activate(true, ids, &mut conn).await {
+        Ok(_) => Ok(HttpResponse::Ok().body("users activated")),
+        Err(e) => Err(ServiceError::internal_error(e).into()),
+    }
+}
+
+pub async fn deactivate_users(Json(ids): Json<Vec<i32>>, pool: Data<Pool>) -> Result<HttpResponse> {
+    let mut conn = pool.get().await.map_err(ServiceError::pool_error)?;
+    match User::activate(false, ids, &mut conn).await {
+        Ok(_) => Ok(HttpResponse::Ok().body("users deactivated")),
+        Err(e) => Err(ServiceError::internal_error(e).into()),
+    }
+}

@@ -10,11 +10,7 @@ export const useAuthStore = defineStore('auth', () => {
   const authenticated = computed(() => !!profile.value)
   const adminAuthorized = computed(() => !!profile.value && profile.value.role === 2)
   const user = computed(
-    () =>
-      (profile.value
-        ? { ...profile.value, avatar: '' }
-        : {}
-      ) as User & { avatar: string }
+    () => (profile.value ? { ...profile.value, avatar: '' } : {}) as User & { avatar: string }
   )
 
   async function signIn(email: string, password: string) {

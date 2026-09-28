@@ -27,7 +27,7 @@
 </script>
 
 <template>
-  <div v-if="selectedCount > 0">
+  <template v-if="selectedCount > 0">
     <div
       aria-live="polite"
       aria-atomic="true"
@@ -111,5 +111,5 @@
         <slot />
       </div>
     </div>
-  </div>
+  </template>
 </template>

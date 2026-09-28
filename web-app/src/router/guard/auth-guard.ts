@@ -4,7 +4,6 @@ import type { Router } from 'vue-router'
 
 export function setupAuthGuard(router: Router) {
   router.beforeEach(async (to, _from) => {
-
     const authStore = useAuthStore()
     const { adminAuthorized, authenticated } = storeToRefs(authStore)
 
@@ -13,9 +12,7 @@ export function setupAuthGuard(router: Router) {
     if (
       (to.meta && to.meta.guard == 'guest' && authenticated) ||
       (to.meta && to.meta.guard == 'user' && !authenticated) ||
-      (to.meta &&
-        to.meta.guard == 'admin' &&
-        (!authenticated || !adminAuthorized))
+      (to.meta && to.meta.guard == 'admin' && (!authenticated || !adminAuthorized))
     ) {
       return { name: 'index' }
     }

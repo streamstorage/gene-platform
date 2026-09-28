@@ -179,4 +179,11 @@ impl User {
     pub async fn get_all(conn: &mut Connection) -> QueryResult<Vec<User>> {
         users::table.load::<User>(conn).await
     }
+
+    pub async fn activate(state: bool, ids: Vec<i32>, conn: &mut Connection) -> QueryResult<usize> {
+        diesel::update(users::table.filter(users::dsl::id.eq_any(ids)))
+            .set(users::dsl::active.eq(state))
+            .execute(conn)
+            .await
+    }
 }

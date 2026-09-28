@@ -124,9 +124,9 @@
     try {
       isLoading.value = true
       if (isEdit.value) {
-        await updateUser({...props.user!, ...values})
+        await updateUser({ ...props.user!, ...values })
       } else {
-        await addUser({...values} as unknown as User)
+        await addUser({ ...values } as unknown as User)
       }
       open.value = false
       emit('updated')

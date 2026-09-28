@@ -22,4 +22,5 @@ export default {
 
   users: () => `${apiBaseUrl}/api/admin/users`,
   user: (id: number) => `${apiBaseUrl}/api/admin/users/${id}`,
+  usersActivate: () => `${apiBaseUrl}/api/admin/users/activate`,
 }

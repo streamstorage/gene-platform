@@ -1,7 +1,7 @@
 import type { ClassValue } from 'clsx'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { type ZodTypeAny, z} from 'zod'
+import { type ZodTypeAny, z } from 'zod'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -81,7 +81,7 @@ export const formatDateTime = (e: Date) =>
 
 export const nullableInput = <T extends ZodTypeAny>(
   schema: T,
-  message = 'Output value can not be null',
+  message = 'Output value can not be null'
 ) => {
   return schema.nullable().transform((val, ctx) => {
     if (val === null) {
@@ -89,11 +89,11 @@ export const nullableInput = <T extends ZodTypeAny>(
         code: z.ZodIssueCode.custom,
         fatal: true,
         message,
-      });
+      })
 
-      return z.NEVER;
+      return z.NEVER
     }
 
-    return val;
-  });
+    return val
+  })
 }

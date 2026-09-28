@@ -1,6 +1,6 @@
 <script setup lang="ts">
-  import UserActionDialog from './UserActionDialog.vue'
   import type { User } from '../data/schema'
+  import UserActionDialog from './UserActionDialog.vue'
   import type { DataTableRow } from '@/components/data-table'
   import { Button } from '@/components/ui/button'
   import {

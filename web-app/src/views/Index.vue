@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { Button } from '@/components/ui/button'
   import { Dna, LogIn } from '@lucide/vue'
-  import { useAuthStore } from '@/stores/auth'
+  import { useAuthStore } from '@/stores'
   import { storeToRefs } from 'pinia'
   import { useRouter } from 'vue-router'
 

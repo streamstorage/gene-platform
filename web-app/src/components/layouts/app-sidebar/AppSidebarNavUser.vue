@@ -17,7 +17,7 @@
     useSidebar,
   } from '@/components/ui/sidebar'
   import { getDisplayNameInitials } from '@/lib/utils'
-  import { useAuthStore } from '@/stores/auth.ts'
+  import { useAuthStore } from '@/stores'
   import { ChevronsUpDown, LogOut, Palette, Sparkles, UserCog } from '@lucide/vue'
   import { storeToRefs } from 'pinia'
   import { ref } from 'vue'

@@ -8,13 +8,13 @@ export function arrayFromFallible<T extends z.ZodType>(schema: T) {
     .transform((items) => items.filter((item) => item !== DROPPED) as z.output<T>[])
 }
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-
 export const error = async (resp: Response) => {
   const error = new Error(`${await resp.text()}`)
   error.name = `${resp.status}`
   return error
 }
+
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
 
 export default {
   token: () => `${apiBaseUrl}/api/auth/token`,

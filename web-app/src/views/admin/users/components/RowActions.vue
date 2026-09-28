@@ -1,4 +1,5 @@
 <script setup lang="ts">
+  import { userActionsKey } from '../data/keys'
   import type { User } from '../data/schema'
   import type { DataTableRow } from '@/components/data-table'
   import { Button } from '@/components/ui/button'
@@ -11,11 +12,15 @@
     DropdownMenuTrigger,
   } from '@/components/ui/dropdown-menu'
   import { EllipsisIcon, Trash2, UserPen } from '@lucide/vue'
+  import { inject } from 'vue'
 
   interface DataTableRowActionsProps {
     row: DataTableRow<User>
   }
   const props = defineProps<DataTableRowActionsProps>()
+
+  const actions = inject(userActionsKey)
+  const { openUserEditDialog } = actions!
 </script>
 
 <template>
@@ -34,14 +39,14 @@
         align="end"
         class="w-40"
       >
-        <DropdownMenuItem @click="">
+        <DropdownMenuItem @click="openUserEditDialog(props.row.original)">
           Edit
           <DropdownMenuShortcut>
             <UserPen :size="16" />
           </DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem @click="">
+        <DropdownMenuItem>
           {{ row.original.active ? 'Deactivate' : 'Activate' }}
           <DropdownMenuShortcut>
             <Trash2 :size="16" />

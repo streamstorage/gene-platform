@@ -11,7 +11,7 @@
   } from '@/components/ui/card'
   import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
   import { Input } from '@/components/ui/input'
-  import { useAuthStore } from '@/stores/auth'
+  import { useAuthStore } from '@/stores'
   import { Loader2, LogIn } from '@lucide/vue'
   import { toTypedSchema } from '@vee-validate/zod'
   import { useForm } from 'vee-validate'

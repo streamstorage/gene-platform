@@ -1,8 +1,10 @@
 <script setup lang="ts">
   import { usersApi } from '@/api'
   import BulkActions from './components/BulkActions.vue'
+  import UserEditDialog from './components/UserEditDialog.vue'
   import { usersColumns } from './components/columns'
   import { roles, status } from './data/data'
+  import { userActionsKey } from './data/keys'
   import { type User } from './data/schema'
   import Main from '@/components/Main.vue'
   import {
@@ -14,7 +16,7 @@
   } from '@/components/data-table'
   import { Button } from '@/components/ui/button'
   import { UserPlus } from '@lucide/vue'
-  import { onMounted, ref } from 'vue'
+  import { onMounted, provide, ref } from 'vue'
   import { toast } from 'vue-sonner'
 
   const loading = ref(false)
@@ -30,8 +32,16 @@
     { columnId: 'role', title: 'Role', options: roles.map((role) => ({ ...role })) },
   ] satisfies DataTableToolbarFilter[]
 
+  const userEditDialogOpen = ref(false)
+  const userToEdit = ref<User | undefined>(undefined)
+  const openUserEditDialog = (user: User | undefined) => {
+    userToEdit.value = user
+    userEditDialogOpen.value = true
+  }
+  provide(userActionsKey, { openUserEditDialog })
+
   const { listAll } = usersApi
-  onMounted(async () => {
+  const refresh = async () => {
     loading.value = true
     try {
       data.value = await listAll()
@@ -40,6 +50,10 @@
     } finally {
       loading.value = false
     }
+  }
+
+  onMounted(() => {
+    refresh()
   })
 </script>
 
@@ -51,8 +65,9 @@
         <p class="text-muted-foreground">Manage your users and their roles here.</p>
       </div>
       <div class="flex gap-2">
-        <Button class="space-x-1"> <span>Add User</span> <UserPlus :size="18" /> </Button>
+        <Button class="space-x-1" @click="openUserEditDialog(undefined)"> <span>Add User</span> <UserPlus :size="18" /> </Button>
       </div>
+      <UserEditDialog v-if="userEditDialogOpen" v-model="userEditDialogOpen" :user="userToEdit" @updated="refresh" />
     </div>
     <DataTable
       :data="data"

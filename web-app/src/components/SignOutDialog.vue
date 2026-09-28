@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import ConfirmDialog from './ConfirmDialog.vue'
-  import { useAuthStore } from '@/stores/auth'
+  import { useAuthStore } from '@/stores'
   import { useRouter } from 'vue-router'
   import { toast } from 'vue-sonner'
 

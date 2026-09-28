@@ -17,7 +17,7 @@
   type SelectDropdownProps = SelectRootProps & {
     placeholder?: string
     isPending?: boolean
-    items: { label: string; value: string }[] | undefined
+    items: { label: string; value: string | number }[] | undefined
     disabled?: boolean
     class?: HTMLAttributes['class']
   }

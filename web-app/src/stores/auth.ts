@@ -13,18 +13,8 @@ export const useAuthStore = defineStore('auth', () => {
     () =>
       (profile.value
         ? { ...profile.value, avatar: '' }
-        : {
-            avatar: '',
-            id: 0,
-            name: '',
-            email: 'email@address.com',
-            notes: '',
-            active: false,
-            role: 0,
-            last_seen: new Date(),
-            created_at: new Date(),
-            updated_at: new Date(),
-          }) satisfies User & { avatar: string }
+        : {}
+      ) as User & { avatar: string }
   )
 
   async function signIn(email: string, password: string) {

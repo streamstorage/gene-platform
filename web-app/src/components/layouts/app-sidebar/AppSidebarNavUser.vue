@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import SignOutDialog from '@/components/SignOutDialog.vue'
+  import SignOutDialog from '@/components/layouts/SignOutDialog.vue'
   import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
   import {
     DropdownMenu,
@@ -16,7 +16,6 @@
     SidebarMenuItem,
     useSidebar,
   } from '@/components/ui/sidebar'
-  import { getDisplayNameInitials } from '@/lib/utils'
   import { useAuthStore } from '@/stores'
   import { ChevronsUpDown, LogOut, Palette, Sparkles, UserCog } from '@lucide/vue'
   import { storeToRefs } from 'pinia'
@@ -43,9 +42,7 @@
                 :src="user.avatar"
                 :alt="user.name"
               />
-              <AvatarFallback class="rounded-lg">{{
-                getDisplayNameInitials(user.name)
-              }}</AvatarFallback>
+              <AvatarFallback class="rounded-lg">{{ user.initials }}</AvatarFallback>
             </Avatar>
             <div class="grid flex-1 text-start text-sm leading-tight">
               <span class="truncate font-semibold">{{ user.name }}</span>
@@ -67,9 +64,7 @@
                   :src="user.avatar"
                   :alt="user.name"
                 />
-                <AvatarFallback class="rounded-lg">{{
-                  getDisplayNameInitials(user.name)
-                }}</AvatarFallback>
+                <AvatarFallback class="rounded-lg">{{ user.initials }}</AvatarFallback>
               </Avatar>
               <div class="grid flex-1 text-start text-sm leading-tight">
                 <span class="truncate font-semibold">{{ user.name }}</span>
@@ -110,6 +105,9 @@
         </DropdownMenuContent>
       </DropdownMenu>
     </SidebarMenuItem>
-    <SignOutDialog v-model="showSignOutDialog" />
+    <SignOutDialog
+      v-if="showSignOutDialog"
+      v-model="showSignOutDialog"
+    />
   </SidebarMenu>
 </template>

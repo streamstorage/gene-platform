@@ -10,11 +10,11 @@ export function setupAuthGuard(router: Router) {
     await authStore.getProfile()
 
     if (
-      (to.meta && to.meta.guard == 'guest' && authenticated) ||
-      (to.meta && to.meta.guard == 'user' && !authenticated) ||
-      (to.meta && to.meta.guard == 'admin' && (!authenticated || !adminAuthorized))
+      (to.meta && to.meta.guard == 'guest' && authenticated.value) ||
+      (to.meta && to.meta.guard == 'user' && !authenticated.value) ||
+      (to.meta && to.meta.guard == 'admin' && (!authenticated.value || !adminAuthorized.value))
     ) {
-      return { name: 'index' }
+      return { name: 'Index' }
     }
   })
 }

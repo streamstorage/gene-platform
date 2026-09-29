@@ -1,5 +1,11 @@
 <script setup lang="ts">
   import { AppSidebar } from './app-sidebar'
+  import {
+    HeaderBar,
+    HeaderBarProfileDropdown,
+    HeaderBarSearch,
+    HeaderBarThemeSwitch,
+  } from './header-bar'
   import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
   import { cn } from '@/lib/utils'
 
@@ -27,6 +33,11 @@
         )
       "
     >
+      <HeaderBar fixed>
+        <HeaderBarSearch class="me-auto" />
+        <HeaderBarThemeSwitch />
+        <HeaderBarProfileDropdown />
+      </HeaderBar>
       <router-view />
     </SidebarInset>
   </SidebarProvider>

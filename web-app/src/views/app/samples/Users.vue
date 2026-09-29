@@ -6,13 +6,13 @@
   import { roles, status } from './data/data'
   import { type User } from './data/schema'
   import { users } from './data/users'
-  import Main from '@/components/Main.vue'
   import {
     type ColumnFilters,
     DataTable,
     DataTableToolbar,
     type DataTableToolbarFilter,
   } from '@/components/data-table'
+  import MainPage from '@/components/layouts/MainPage.vue'
   import { Button } from '@/components/ui/button'
   import { MailPlus, UserPlus } from '@lucide/vue'
   import { onMounted, ref } from 'vue'
@@ -43,7 +43,7 @@
 </script>
 
 <template>
-  <Main class="flex flex-1 flex-col gap-4 sm:gap-6">
+  <MainPage class="flex flex-1 flex-col gap-4 sm:gap-6">
     <div class="flex flex-wrap items-end justify-between gap-2">
       <div>
         <h2 class="text-2xl font-bold tracking-tight">User List</h2>
@@ -85,5 +85,5 @@
         <BulkActions :table="table" />
       </template>
     </DataTable>
-  </Main>
+  </MainPage>
 </template>

@@ -7,7 +7,7 @@
     SidebarContent,
     SidebarFooter,
     SidebarHeader,
-    SidebarRail,
+    //SidebarRail,
   } from '@/components/ui/sidebar'
   import { navGroups, navAdminGroups } from '@/constants/sidebar'
   import { computed } from 'vue'
@@ -37,6 +37,7 @@
     <SidebarFooter>
       <AppSidebarNavUser />
     </SidebarFooter>
-    <SidebarRail />
+    <!-- TODO: better hover style -->
+    <!-- <SidebarRail /> -->
   </Sidebar>
 </template>

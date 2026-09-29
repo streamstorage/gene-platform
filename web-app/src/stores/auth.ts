@@ -1,5 +1,6 @@
 import { authApi } from '@/api'
 import { type User } from '@/views/admin/users/data/schema'
+import { getDisplayNameInitials } from '@/lib/utils'
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
@@ -10,7 +11,12 @@ export const useAuthStore = defineStore('auth', () => {
   const authenticated = computed(() => !!profile.value)
   const adminAuthorized = computed(() => !!profile.value && profile.value.role === 2)
   const user = computed(
-    () => (profile.value ? { ...profile.value, avatar: '' } : {}) as User & { avatar: string }
+    () =>
+      (profile.value
+        ? { ...profile.value, avatar: '', initials: getDisplayNameInitials(profile.value.name) }
+        : {
+            avatar: '',
+          }) as User & { avatar: string; initials: string }
   )
 
   async function signIn(email: string, password: string) {
@@ -39,8 +45,9 @@ export const useAuthStore = defineStore('auth', () => {
       if (error instanceof Error) {
         if (error.name == '401') {
           profile.value = null
-          return
         }
+      } else {
+        console.log(error)
       }
     }
   }

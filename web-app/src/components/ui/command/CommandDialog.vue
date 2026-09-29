@@ -37,7 +37,7 @@
         <DialogTitle>{{ title }}</DialogTitle>
         <DialogDescription>{{ description }}</DialogDescription>
       </DialogHeader>
-      <Command>
+      <Command class="**:data-[slot=command-input-wrapper]:h-12">
         <slot v-bind="slotProps" />
       </Command>
     </DialogContent>

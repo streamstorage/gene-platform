@@ -1,11 +1,16 @@
 <script setup lang="ts">
   import { cn } from '@/lib/utils'
   import { type HTMLAttributes } from 'vue'
-  const props = defineProps<{
-    fixed?: boolean
-    fluid?: boolean
-    class?: HTMLAttributes['class']
-  }>()
+  const props = withDefaults(
+    defineProps<{
+      fixed?: boolean
+      fluid?: boolean
+      class?: HTMLAttributes['class']
+    }>(),
+    {
+      fixed: true,
+    }
+  )
 </script>
 
 <template>

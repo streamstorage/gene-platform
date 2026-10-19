@@ -2,6 +2,10 @@
 
 Web App is built on top of Vue + ShadCN-Vue(Reka-UI + Tailwind CSS) + Vite.
 
+## Known Issue
+
+- DropdownMenu, Dialog and Select would cause page shift and scrollbar fixed. Track the following PR and fix.\
+  https://github.com/unovue/reka-ui/issues/2822
 
 ## Reference
 - Shadcn Vue Admin\

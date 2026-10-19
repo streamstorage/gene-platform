@@ -25,7 +25,7 @@
 
 <template>
   <Collapsible
-    asChild
+    as-child
     :default-open="checkIsActive(href, item, true)"
     class="group/collapsible"
   >

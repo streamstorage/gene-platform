@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import SignOutDialog from '@/components/SignOutDialog.vue'
+  import SignOutDialog from '@/components/layouts/SignOutDialog.vue'
   import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
   import {
     DropdownMenu,
@@ -16,8 +16,7 @@
     SidebarMenuItem,
     useSidebar,
   } from '@/components/ui/sidebar'
-  import { getDisplayNameInitials } from '@/lib/utils'
-  import { useAuthStore } from '@/stores/auth.ts'
+  import { useAuthStore } from '@/stores'
   import { ChevronsUpDown, LogOut, Palette, Sparkles, UserCog } from '@lucide/vue'
   import { storeToRefs } from 'pinia'
   import { ref } from 'vue'
@@ -32,7 +31,7 @@
 <template>
   <SidebarMenu>
     <SidebarMenuItem>
-      <DropdownMenu>
+      <DropdownMenu :modal="false">
         <DropdownMenuTrigger as-child>
           <SidebarMenuButton
             size="lg"
@@ -43,9 +42,7 @@
                 :src="user.avatar"
                 :alt="user.name"
               />
-              <AvatarFallback class="rounded-lg">{{
-                getDisplayNameInitials(user.name)
-              }}</AvatarFallback>
+              <AvatarFallback class="rounded-lg">{{ user.initials }}</AvatarFallback>
             </Avatar>
             <div class="grid flex-1 text-start text-sm leading-tight">
               <span class="truncate font-semibold">{{ user.name }}</span>
@@ -56,7 +53,7 @@
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          class="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+          class="w-(--reka-dropdown-menu-trigger-width) min-w-56 rounded-lg"
           :side="isMobile ? 'bottom' : 'right'"
           :side-offset="4"
         >
@@ -64,12 +61,10 @@
             <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
               <Avatar class="h-8 w-8 rounded-lg">
                 <AvatarImage
-                  src="user.avatar"
-                  alt="user.name"
+                  :src="user.avatar"
+                  :alt="user.name"
                 />
-                <AvatarFallback class="rounded-lg">{{
-                  getDisplayNameInitials(user.name)
-                }}</AvatarFallback>
+                <AvatarFallback class="rounded-lg">{{ user.initials }}</AvatarFallback>
               </Avatar>
               <div class="grid flex-1 text-start text-sm leading-tight">
                 <span class="truncate font-semibold">{{ user.name }}</span>
@@ -79,21 +74,23 @@
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem>
-              <Sparkles />
-              Upgrade to Pro
+            <DropdownMenuItem as-child>
+              <RouterLink to="/app/membership">
+                <Sparkles />
+                Upgrade to Pro
+              </RouterLink>
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuItem as-child>
-              <RouterLink to="">
+              <RouterLink to="/app/settings/profile">
                 <UserCog />
                 Profile
               </RouterLink>
             </DropdownMenuItem>
             <DropdownMenuItem as-child>
-              <RouterLink to="">
+              <RouterLink to="/app/settings/preference">
                 <Palette />
                 Preference
               </RouterLink>
@@ -110,6 +107,9 @@
         </DropdownMenuContent>
       </DropdownMenu>
     </SidebarMenuItem>
-    <SignOutDialog v-model="showSignOutDialog" />
+    <SignOutDialog
+      v-if="showSignOutDialog"
+      v-model="showSignOutDialog"
+    />
   </SidebarMenu>
 </template>

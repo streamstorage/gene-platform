@@ -10,20 +10,19 @@
     AlertDialogTitle,
   } from '@/components/ui/alert-dialog'
   import { Button } from '@/components/ui/button'
-  import type { Component, HTMLAttributes } from 'vue'
+  import type { HTMLAttributes } from 'vue'
 
   const open = defineModel<boolean>()
 
   type ConfirmDialogProps = {
-    title: string | Component
+    title?: string
     disabled?: boolean
-    desc: string | Component
+    desc?: string
     cancelBtnText?: string
-    confirmText?: string | Component
+    confirmText?: string
     destructive?: boolean
     isLoading?: boolean
     class?: HTMLAttributes['class']
-    children?: Component
   } & (
     { form: string; handleConfirm?: undefined } | { form?: undefined; handleConfirm: () => void }
   )
@@ -36,14 +35,20 @@
 
 <template>
   <AlertDialog v-model:open="open">
-    <AlertDialogContent :class="cn(props.class && props.class)">
+    <AlertDialogContent :class="cn(props.class)">
       <AlertDialogHeader class="text-start">
-        <AlertDialogTitle>{{ title }}</AlertDialogTitle>
+        <AlertDialogTitle>
+          <slot name="title">
+            {{ title }}
+          </slot>
+        </AlertDialogTitle>
         <AlertDialogDescription as-child>
-          <div>{{ desc }}</div>
+          <slot name="description">
+            <div>{{ desc }}</div>
+          </slot>
         </AlertDialogDescription>
       </AlertDialogHeader>
-      {{ children }}
+      <slot></slot>
       <AlertDialogFooter>
         <AlertDialogCancel :disabled="isLoading">
           {{ cancelBtnText }}
@@ -55,7 +60,9 @@
           :variant="destructive ? 'destructive' : 'default'"
           :disabled="disabled || isLoading"
         >
-          {{ confirmText }}
+          <slot name="confirm">
+            {{ confirmText }}
+          </slot>
         </Button>
       </AlertDialogFooter>
     </AlertDialogContent>

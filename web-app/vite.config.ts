@@ -10,7 +10,7 @@ export default defineConfig(({ command }) => {
     plugins: [
       tailwindcss(),
       vue(),
-      vueDevTools(), 
+      vueDevTools(),
     ],
     resolve: {
       alias: {
@@ -18,7 +18,7 @@ export default defineConfig(({ command }) => {
       },
     },
   }
-  
+
   if (command === 'serve') {
     return {
       ...data,

@@ -6,7 +6,7 @@
     SidebarMenuItem,
     useSidebar,
   } from '@/components/ui/sidebar'
-  import { Dna, Menu, X } from '@lucide/vue'
+  import { Dna, Menu } from '@lucide/vue'
 
   const { setOpenMobile } = useSidebar()
 </script>
@@ -39,8 +39,9 @@
           size="icon"
           class="aspect-square size-8 max-md:scale-125"
         >
-          <X class="md:hidden" />
-          <Menu class="max-md:hidden" />
+          <!-- <X class="md:hidden" />
+          <Menu class="max-md:hidden" /> -->
+          <Menu />
           <span class="sr-only"></span>
         </Button>
       </SidebarMenuButton>

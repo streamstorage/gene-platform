@@ -1,6 +1,7 @@
+import { setupRouterGuard } from './guard'
 import AppLayout from '@/components/layouts/AppLayout.vue'
 import AuthLayout from '@/components/layouts/AuthLayout.vue'
-import { useNProgress } from '@vueuse/integrations/useNProgress'
+import Settings from '@/views/app/settings/Settings.vue'
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 const routes: Array<RouteRecordRaw> = [
@@ -36,7 +37,57 @@ const routes: Array<RouteRecordRaw> = [
       {
         path: '/app/dashboard',
         name: 'Dashboard',
-        component: () => import('@/views/app/Dashboard.vue'),
+        component: () => import('@/views/app/dashboard/Dashboard.vue'),
+      },
+      {
+        path: '/app/samples',
+        name: 'Samples',
+        component: () => import('@/views/app/samples/Users.vue'),
+      },
+      {
+        path: '/app/membership',
+        name: 'Membership',
+        component: () => import('@/views/app/Membership.vue'),
+      },
+      {
+        path: '/app/settings',
+        name: 'Settings',
+        component: Settings,
+        redirect: { name: 'Profile' },
+        children: [
+          {
+            path: '/app/settings/profile',
+            name: 'Profile',
+            component: () => import('@/views/app/settings/Profile.vue'),
+          },
+          {
+            path: '/app/settings/preference',
+            name: 'Preference',
+            component: () => import('@/views/app/settings/Preference.vue'),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    path: '/admin',
+    name: 'Admin',
+    component: AppLayout,
+    props: { isAdmin: true },
+    meta: {
+      guard: 'admin',
+    },
+    redirect: { name: 'Summary' },
+    children: [
+      {
+        path: '/admin/summary',
+        name: 'Summary',
+        component: () => import('@/views/app/dashboard/Dashboard.vue'),
+      },
+      {
+        path: '/admin/users',
+        name: 'Users',
+        component: () => import('@/views/admin/users/Users.vue'),
       },
     ],
   },
@@ -68,18 +119,6 @@ const router = createRouter({
   },
 })
 
-const { start, done } = useNProgress(0.0, {
-  speed: 500,
-  trickleSpeed: 200,
-  showSpinner: false,
-})
-
-router.beforeEach(() => {
-  start()
-})
-
-router.afterEach(() => {
-  done()
-})
+setupRouterGuard(router)
 
 export default router

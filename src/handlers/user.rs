@@ -1,0 +1,97 @@
+use super::auth::get_user_id;
+use crate::db::Pool;
+use crate::error::ServiceError;
+use crate::models::user::{NewUser, User};
+use actix_session::Session;
+use actix_web::{
+    HttpResponse, Result,
+    web::{Data, Json, Path},
+};
+use serde_json::Value;
+
+pub async fn get_profile(pool: Data<Pool>, session: Session) -> Result<HttpResponse> {
+    let user_id = get_user_id(&session);
+    let mut conn = pool.get().await.map_err(ServiceError::pool_error)?;
+    match User::find_user_by_id(user_id, &mut conn).await {
+        Ok(user) => {
+            let _ = User::update_last_seen(user_id, &mut conn).await;
+            Ok(HttpResponse::Ok().json(user))
+        }
+        Err(e) => Err(ServiceError::internal_error(e).into()),
+    }
+}
+
+pub async fn update_profile(
+    Json(value): Json<Value>,
+    pool: Data<Pool>,
+    session: Session,
+) -> Result<HttpResponse> {
+    let user_id = get_user_id(&session);
+    let mut conn = pool.get().await.map_err(ServiceError::pool_error)?;
+    let new_password = value
+        .as_object()
+        .unwrap()
+        .get("newPassword")
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_string();
+    let user: NewUser =
+        serde_json::from_value(value).map_err(|e| ServiceError::bad_request(&e.to_string()))?;
+
+    match User::update_profile(user_id, user, new_password, &mut conn).await {
+        Ok(result) => {
+            if result {
+                Ok(HttpResponse::Ok().body("profile updated"))
+            } else {
+                Err(ServiceError::bad_request("invalid password").into())
+            }
+        }
+        Err(e) => Err(ServiceError::internal_error(e).into()),
+    }
+}
+
+pub async fn list_users(pool: Data<Pool>) -> Result<HttpResponse> {
+    let mut conn = pool.get().await.map_err(ServiceError::pool_error)?;
+    match User::get_all(&mut conn).await {
+        Ok(user) => Ok(HttpResponse::Ok().json(user)),
+        Err(e) => Err(ServiceError::internal_error(e).into()),
+    }
+}
+
+pub async fn add_user(Json(user): Json<NewUser>, pool: Data<Pool>) -> Result<HttpResponse> {
+    let mut conn = pool.get().await.map_err(ServiceError::pool_error)?;
+    match User::add_new_user(user, &mut conn).await {
+        Ok(_) => Ok(HttpResponse::Ok().body("user added")),
+        Err(e) => Err(ServiceError::internal_error(e).into()),
+    }
+}
+
+pub async fn update_user(
+    user_id: Path<i32>,
+    Json(user): Json<NewUser>,
+    pool: Data<Pool>,
+) -> Result<HttpResponse> {
+    let user_id = user_id.into_inner();
+    let mut conn = pool.get().await.map_err(ServiceError::pool_error)?;
+    match User::update_user(user_id, user, &mut conn).await {
+        Ok(()) => Ok(HttpResponse::Ok().body("user updated")),
+        Err(e) => Err(ServiceError::internal_error(e).into()),
+    }
+}
+
+pub async fn activate_users(Json(ids): Json<Vec<i32>>, pool: Data<Pool>) -> Result<HttpResponse> {
+    let mut conn = pool.get().await.map_err(ServiceError::pool_error)?;
+    match User::activate(true, ids, &mut conn).await {
+        Ok(_) => Ok(HttpResponse::Ok().body("users activated")),
+        Err(e) => Err(ServiceError::internal_error(e).into()),
+    }
+}
+
+pub async fn deactivate_users(Json(ids): Json<Vec<i32>>, pool: Data<Pool>) -> Result<HttpResponse> {
+    let mut conn = pool.get().await.map_err(ServiceError::pool_error)?;
+    match User::activate(false, ids, &mut conn).await {
+        Ok(_) => Ok(HttpResponse::Ok().body("users deactivated")),
+        Err(e) => Err(ServiceError::internal_error(e).into()),
+    }
+}

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "gene-platform.fullname" . }}-mysql
+spec:
+  storageClassName: {{ include "gene-platform.fullname" . }}-local-storage
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi

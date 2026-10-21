@@ -2,7 +2,7 @@ use actix_session::{SessionMiddleware, config::PersistentSession, storage::Redis
 use actix_web::cookie::{Key, time::Duration};
 use actix_web::{App, HttpServer, middleware, web};
 use gene_platform::{cache, db, routers, utils};
-use std::io;
+use std::{env, io};
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
@@ -19,6 +19,12 @@ async fn main() -> io::Result<()> {
         .expect("Redis session store");
     let secret_key = Key::from(&utils::get_secret_key());
 
+    let host = env::var("HOST").unwrap_or("127.0.0.1".into());
+    let port = env::var("PORT")
+        .unwrap_or("8080".into())
+        .parse::<u16>()
+        .expect("Invalid port");
+
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(db_pool.clone()))
@@ -30,7 +36,7 @@ async fn main() -> io::Result<()> {
             .configure(routers::config)
             .wrap(middleware::Logger::default())
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind((host, port))?
     .run()
     .await
 }

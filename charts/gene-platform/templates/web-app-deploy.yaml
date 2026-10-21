@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gene-platform.fullname" . }}-web-app
+  labels:
+    {{- include "gene-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web-app
+spec:
+  selector:
+    matchLabels:
+      {{- include "gene-platform.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: web-app
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "gene-platform.labels" . | nindent 8 }}
+        app.kubernetes.io/component: web-app
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}-web-app
+        image: "{{ .Values.image.nginx }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 80
+          protocol: TCP
+          name: http
+        volumeMounts:
+        - name: static-web-files
+          mountPath: /usr/share/nginx/html
+          subPath: dist
+        - name: nginx-conf
+          mountPath: /etc/nginx/conf.d
+          readOnly: true
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1024Mi
+          requests:
+            cpu: 1000m
+            memory: 1024Mi
+      volumes:
+      - name: static-web-files
+        image:
+          reference: "{{ .Values.image.webApp }}"
+          pullPolicy: Always
+      - name: nginx-conf
+        configMap:
+          name: {{ include "gene-platform.fullname" . }}-web-app

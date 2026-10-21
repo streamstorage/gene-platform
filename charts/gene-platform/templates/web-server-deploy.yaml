@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gene-platform.fullname" . }}-web-server
+  labels:
+    {{- include "gene-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web-server
+spec:
+  selector:
+    matchLabels:
+      {{- include "gene-platform.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: web-server
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "gene-platform.labels" . | nindent 8 }}
+        app.kubernetes.io/component: web-server
+    spec:
+      initContainers:
+      - name: {{ .Chart.Name }}-web-server-init
+        image: "{{ .Values.image.webServer }}"
+        imagePullPolicy: Always
+        env:
+        - name: DATABASE_URL
+          value: "mysql://{{ .Values.mysql.user }}:{{ .Values.mysql.password }}@{{ include "gene-platform.fullname" . }}-mysql:3306/{{ .Values.mysql.db }}"
+        command: ['./migrate_db']
+      containers:
+      - name: {{ .Chart.Name }}-web-server
+        image: "{{ .Values.image.webServer }}"
+        imagePullPolicy: Always
+        env:
+        - name: DATABASE_URL
+          value: "mysql://{{ .Values.mysql.user }}:{{ .Values.mysql.password }}@{{ include "gene-platform.fullname" . }}-mysql:3306/{{ .Values.mysql.db }}"
+        - name: REDIS_URL
+          value: "redis://{{ include "gene-platform.fullname" . }}-redis:6379"
+        - name: SECRET_KEY
+          value: {{ .Values.server.secretKey }}
+        - name: HOST
+          value: "0.0.0.0"
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+          name: http
+        resources:
+          limits:
+            cpu: {{ .Values.server.cpu }}
+            memory: {{ .Values.server.memory }}
+          requests:
+            cpu: {{ .Values.server.cpu }}
+            memory: {{ .Values.server.memory }}

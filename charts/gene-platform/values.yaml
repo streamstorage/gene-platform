@@ -1,0 +1,37 @@
+# Default values for gene-platform.
+image:
+  mysql: mysql:9.7.2
+  redis: redis:8.10.2
+  nginx: nginx:1.31.7
+  webApp: registry.yiliu.pub/gene-platform/web-app
+  webServer: registry.yiliu.pub/gene-platform/web-server
+  pullPolicy: IfNotPresent
+
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+
+mysql:
+  nodeAffinity: node3
+  path: /opt/local-path-provisioner/gene-platform-mysql
+  capacity: 20Gi
+  rootPassword: "P@ssword01!"
+  user: "gene"
+  password: "P@ssword01!"
+  db: "gene"
+  cpu: 2000m
+  memory: 2048Mi
+
+redis:
+  cpu: 1000m
+  memory: 1024Mi
+
+ingress:
+  className: nginx
+  certManagerClusterIssuer: letsencrypt-alidns
+  host: gene-platform-pgx.yiliu.pub
+
+server:
+  secretKey: rBO3I48hZYHUnvrCanWrmNMDBZOjLLYUHJFQlwxNxWbsXab6bboMVe2k5JISzwkbKzmw4rn0QzV9ZosvGXn0wQ==
+  cpu: 2000m
+  memory: 2048Mi

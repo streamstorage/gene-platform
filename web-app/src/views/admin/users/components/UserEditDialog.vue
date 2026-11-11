@@ -38,11 +38,20 @@
   const formSchema = toTypedSchema(
     z
       .object({
-        name: z.string().min(1, 'Name is required.'),
-        email: z.string().email('Email is required.'),
+        name: z
+          .string()
+          .min(1, 'Name is required.')
+          .max(32, 'Name can not be longer than 32 characters.'),
+        email: z
+          .string()
+          .email('Email is required.')
+          .max(32, 'Email can not be longer than 32 characters.'),
         role: nullableInput(userRoleSchema, 'Role is required.'),
         notes: z.string().max(255).nullable(),
-        password: z.string().transform((pwd) => pwd.trim()),
+        password: z
+          .string()
+          .max(64, 'Password can not be longer than 64 characters.')
+          .transform((pwd) => pwd.trim()),
         confirmPassword: z.string().transform((pwd) => pwd.trim()),
         isEdit: z.boolean(),
       })
@@ -126,7 +135,7 @@
       if (isEdit.value) {
         await updateUser({ ...props.user!, ...value })
       } else {
-        await addUser({ ...value } as unknown as User & { password: string })
+        await addUser({ ...value } as unknown as User)
       }
       open.value = false
       emit('updated')

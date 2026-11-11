@@ -1,12 +1,14 @@
 use diesel::Connection as _;
-use diesel::mysql::MysqlConnection;
+use diesel::pg::PgConnection;
 use diesel_async::pooled_connection::{AsyncDieselConnectionManager, deadpool};
-use diesel_async::{AsyncConnection, AsyncMysqlConnection};
+use diesel_async::{AsyncConnection, AsyncPgConnection};
 use std::env;
 
-pub type Connection = AsyncMysqlConnection;
+pub type SyncConnection = PgConnection;
 
-pub type Pool = deadpool::Pool<AsyncMysqlConnection>;
+pub type Connection = AsyncPgConnection;
+
+pub type Pool = deadpool::Pool<AsyncPgConnection>;
 
 pub struct DB {
     pub url: String,
@@ -24,19 +26,19 @@ impl Default for DB {
 
 impl DB {
     pub fn init_pool(&self) -> Pool {
-        let config =
-            AsyncDieselConnectionManager::<diesel_async::AsyncMysqlConnection>::new(&self.url);
+        let config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(&self.url);
         deadpool::Pool::builder(config)
+            .max_size(50)
             .build()
             .expect("create db pool.")
     }
 
-    pub fn init_conn(&self) -> MysqlConnection {
-        MysqlConnection::establish(&self.url).expect("create db conn")
+    pub fn init_conn(&self) -> PgConnection {
+        PgConnection::establish(&self.url).expect("create db conn")
     }
 
     pub async fn init_async_conn(&self) -> Connection {
-        AsyncMysqlConnection::establish(&self.url)
+        AsyncPgConnection::establish(&self.url)
             .await
             .expect("create async db conn")
     }

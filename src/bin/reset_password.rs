@@ -1,6 +1,5 @@
 use dotenv::dotenv;
 use gene_platform::db::DB;
-use gene_platform::handlers::auth::Credential;
 use gene_platform::models::user::User;
 use std::io::stdin;
 
@@ -18,15 +17,11 @@ async fn main() {
 
     println!("What would you like your password to be?");
     stdin().read_line(&mut password).unwrap();
-    let password = password.trim();
+    let password = password.trim().to_string();
 
-    let cred = Credential {
-        email,
-        password: password.to_string(),
-    };
-    if let Ok(user) = User::reset_password(cred, &mut conn).await
+    if let Ok(user) = User::reset_password(email, password, &mut conn).await
         && let Some(user) = user
     {
-        println!("\nPassword reset successfully for user: {}", user.name);
+        println!("\nPassword reset for user: {}", user.name);
     }
 }

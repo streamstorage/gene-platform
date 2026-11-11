@@ -24,7 +24,7 @@ spec:
         imagePullPolicy: Always
         env:
         - name: DATABASE_URL
-          value: "mysql://{{ .Values.mysql.user }}:{{ .Values.mysql.password }}@{{ include "gene-platform.fullname" . }}-mysql:3306/{{ .Values.mysql.db }}"
+          value: "postgres://{{ .Values.postgres.user }}:{{ .Values.postgres.password }}@{{ include "gene-platform.fullname" . }}-postgres:5432/{{ .Values.postgres.db }}"
         command: ['./migrate_db']
       containers:
       - name: {{ .Chart.Name }}-web-server
@@ -32,7 +32,7 @@ spec:
         imagePullPolicy: Always
         env:
         - name: DATABASE_URL
-          value: "mysql://{{ .Values.mysql.user }}:{{ .Values.mysql.password }}@{{ include "gene-platform.fullname" . }}-mysql:3306/{{ .Values.mysql.db }}"
+          value: "postgres://{{ .Values.postgres.user }}:{{ .Values.postgres.password }}@{{ include "gene-platform.fullname" . }}-postgres:5432/{{ .Values.postgres.db }}"
         - name: REDIS_URL
           value: "redis://{{ include "gene-platform.fullname" . }}-redis:6379"
         - name: SECRET_KEY

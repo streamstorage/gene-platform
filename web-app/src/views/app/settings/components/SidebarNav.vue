@@ -9,8 +9,8 @@
     SelectValue,
   } from '@/components/ui/select'
   import { cn } from '@/lib/utils'
-  import { type Component, type HTMLAttributes } from 'vue'
-  import { useRoute } from 'vue-router'
+  import { computed, type Component, type HTMLAttributes } from 'vue'
+  import { useRoute, useRouter } from 'vue-router'
 
   // Prevents root div from auto-inheriting all fallthrough attributes
   defineOptions({
@@ -27,14 +27,21 @@
   }>()
 
   const route = useRoute()
+  const { push } = useRouter()
+
+  const value = computed({
+    get() {
+      return route.path
+    },
+    set(v) {
+      push(v)
+    },
+  })
 </script>
 
 <template>
   <div class="p-1 md:hidden">
-    <Select
-      value="{val}"
-      onValueChange="{handleSelect}"
-    >
+    <Select v-model="value">
       <SelectTrigger class="h-12 sm:w-48">
         <SelectValue placeholder="Theme" />
       </SelectTrigger>
@@ -42,7 +49,7 @@
         <SelectItem
           v-for="item in props.items"
           :key="item.href"
-          value="item.href"
+          :value="item.href"
         >
           <div class="flex gap-x-4 px-2 py-1">
             <span class="scale-125">

@@ -24,13 +24,13 @@ pub async fn login(
     let mut conn = pool.get().await.map_err(ServiceError::pool_error)?;
     let user = User::login(&cred.email, &cred.password, &mut conn)
         .await
-        .map_err(|e| ServiceError::internal_error_msg(e, "User login failed"))?;
+        .map_err(|e| ServiceError::internal_error_w_msg(e, "User login failed"))?;
     if let Some(user) = user {
         session
             .insert("user_id", user.id)
-            .map_err(|e| ServiceError::internal_error_msg(e, "Session insert failed"))?;
+            .map_err(|e| ServiceError::internal_error_w_msg(e, "Session failure"))?;
 
-        if User::is_active(user.id, &mut conn).await {
+        if user.active {
             Ok(HttpResponse::Ok().json(user))
         } else {
             Err(ServiceError::forbidden("User is deactivated").into())

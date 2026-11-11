@@ -7,7 +7,7 @@
     <div class="flex items-center gap-4">
       <Avatar class="h-9 w-9">
         <AvatarImage
-          src="/avatars/01.png"
+          src="https://images.unsplash.com/profile-1630014874714-0735d09c8bb8image?w=40&dpr=2&crop=faces&bg=%23fff&h=40&auto=format&fit=crop&q=60&ixlib=rb-4.1.0"
           alt="Avatar"
         />
         <AvatarFallback>OM</AvatarFallback>
@@ -23,7 +23,7 @@
     <div class="flex items-center gap-4">
       <Avatar class="flex h-9 w-9 items-center justify-center space-y-0 border">
         <AvatarImage
-          src="/avatars/02.png"
+          src="https://images.unsplash.com/profile-1779230097291-972d27db5e5cimage?w=40&dpr=2&crop=faces&bg=%23fff&h=40&auto=format&fit=crop&q=60&ixlib=rb-4.1.0"
           alt="Avatar"
         />
         <AvatarFallback>JL</AvatarFallback>
@@ -39,7 +39,7 @@
     <div class="flex items-center gap-4">
       <Avatar class="h-9 w-9">
         <AvatarImage
-          src="/avatars/03.png"
+          src="https://images.unsplash.com/profile-1764137444759-0c2c046e77e4?w=40&dpr=1&crop=faces&bg=%23fff&h=40&auto=format&fit=crop&q=60&ixlib=rb-4.1.0"
           alt="Avatar"
         />
         <AvatarFallback>IN</AvatarFallback>
@@ -56,7 +56,7 @@
     <div class="flex items-center gap-4">
       <Avatar class="h-9 w-9">
         <AvatarImage
-          src="/avatars/04.png"
+          src=""
           alt="Avatar"
         />
         <AvatarFallback>WK</AvatarFallback>
@@ -73,7 +73,7 @@
     <div class="flex items-center gap-4">
       <Avatar class="h-9 w-9">
         <AvatarImage
-          src="/avatars/05.png"
+          src=""
           alt="Avatar"
         />
         <AvatarFallback>SD</AvatarFallback>

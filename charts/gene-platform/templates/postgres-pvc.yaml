@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "gene-platform.fullname" . }}-postgres
+spec:
+  storageClassName: {{ include "gene-platform.fullname" . }}-postgres-local-storage
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi

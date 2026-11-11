@@ -37,7 +37,8 @@ export const authApi = {
     const profile = userSchema.parse(await response.json())
     return profile
   },
-  updateProfile: async (user: User & { password: string; newPassword: string }) => {
+
+  updateProfile: async (user: User & { newPassword: string }) => {
     const headers = new Headers()
     headers.append('Content-Type', 'application/json')
 

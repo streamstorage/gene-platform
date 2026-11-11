@@ -1,5 +1,5 @@
 use actix_web::{
-    HttpResponse, error,
+    HttpResponse,
     http::{StatusCode, header::ContentType},
 };
 use derive_more::{Display, Error};
@@ -22,7 +22,15 @@ pub enum ServiceError {
     InternalServerError { error_message: String },
 }
 
-impl error::ResponseError for ServiceError {
+pub type ServiceResult<T> = std::result::Result<T, ServiceError>;
+
+impl From<diesel::result::Error> for ServiceError {
+    fn from(e: diesel::result::Error) -> Self {
+        Self::internal_error(e)
+    }
+}
+
+impl actix_web::error::ResponseError for ServiceError {
     fn status_code(&self) -> StatusCode {
         match *self {
             ServiceError::BadRequest { .. } => StatusCode::BAD_REQUEST,
@@ -49,12 +57,13 @@ impl ServiceError {
         }
     }
 
-    pub fn internal_error_msg<T>(e: T, err: &str) -> Self
+    pub fn internal_error_w_msg<T, U>(e: T, msg: U) -> Self
     where
         T: ToString,
+        U: AsRef<str>,
     {
         ServiceError::InternalServerError {
-            error_message: format!("{}, err: {}", err, e.to_string()),
+            error_message: format!("{}, err: {}", msg.as_ref(), e.to_string()),
         }
     }
 
@@ -62,24 +71,24 @@ impl ServiceError {
     where
         T: ToString,
     {
-        Self::internal_error_msg(e, "db connection failed")
+        Self::internal_error_w_msg(e, "db connection failed")
     }
 
-    pub fn bad_request(err: &str) -> Self {
+    pub fn bad_request<T: ToString>(msg: T) -> Self {
         ServiceError::BadRequest {
-            error_message: err.to_string(),
+            error_message: msg.to_string(),
         }
     }
 
-    pub fn unauthorized(err: &str) -> Self {
+    pub fn unauthorized<T: ToString>(msg: T) -> Self {
         ServiceError::Unauthorized {
-            error_message: err.to_string(),
+            error_message: msg.to_string(),
         }
     }
 
-    pub fn forbidden(err: &str) -> Self {
+    pub fn forbidden<T: ToString>(msg: T) -> Self {
         ServiceError::Forbidden {
-            error_message: err.to_string(),
+            error_message: msg.to_string(),
         }
     }
 }

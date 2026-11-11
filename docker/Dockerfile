@@ -14,7 +14,7 @@ RUN yarn build
 
 
 FROM scratch AS web-app
-COPY --from=dev-app /web-app/dist /
+COPY --from=dev-app /web-app/dist /dist
 
 
 FROM "${WEB_SERVER_IMAGE}" AS rust
@@ -40,7 +40,7 @@ RUN set -eux; \
     cargo --version; \
     rustc --version;
 
-RUN apt install -y --no-install-recommends libmysqlclient-dev build-essential libssl-dev pkg-config
+RUN apt install -y --no-install-recommends libpq-dev build-essential libssl-dev pkg-config
 
 FROM rust AS chef
 RUN cargo install --locked cargo-chef
@@ -65,11 +65,11 @@ RUN cargo build --release
 
 
 FROM "${WEB_SERVER_IMAGE}" AS web-server
-RUN apt update && apt-get install -y --no-install-recommends libmysqlclient-dev
+RUN apt update && apt-get install -y --no-install-recommends libpq-dev
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/web-server
 
-COPY --from=builder /web-server/target/release/gene-platform /web-server/target/release/new_admin_user /web-server/target/release/migrate_db ./
+COPY --from=builder /web-server/target/release/gene-platform /web-server/target/release/new_admin_user /web-server/target/release/reset_password /web-server/target/release/migrate_db ./
 
 CMD [ "./gene-platform" ]

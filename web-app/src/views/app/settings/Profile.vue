@@ -27,11 +27,17 @@
         name: z
           .string()
           .min(2, 'Name must be at least 2 characters.')
-          .max(30, 'Name must not be longer than 30 characters.'),
-        email: z.string().email('Please enter your email.'),
+          .max(32, 'Name can not be longer than 32 characters.'),
+        email: z
+          .string()
+          .email('Please enter your email.')
+          .max(32, 'Email can not be longer than 32 characters.'),
         notes: z.string().max(255).nullable(),
         password: z.string().transform((pwd) => pwd.trim()),
-        newPassword: z.string().transform((pwd) => pwd.trim()),
+        newPassword: z
+          .string()
+          .max(64, 'Password can not be longer than 64 characters.')
+          .transform((pwd) => pwd.trim()),
         confirmPassword: z.string().transform((pwd) => pwd.trim()),
       })
       .refine(
@@ -109,8 +115,11 @@
         notes: data.notes,
         password: data.password,
         newPassword: data.newPassword,
+        // the following field is required for deserialization
+        id: 0,
         role: 0,
-      } as User & { password: string; newPassword: string })
+        active: true,
+      } as User & { newPassword: string })
 
       toast.info('Profile updated')
       resetForm({

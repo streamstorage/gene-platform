@@ -25,12 +25,14 @@
   const totalPages = computed(() => props.table.getPageCount())
   const pageNumbers = computed(() => getPageNumbers(currentPage.value, totalPages.value))
 
-  function handlePageSizeChange(value: unknown) {
-    if (typeof value !== 'string' && typeof value !== 'number') return
-
-    const newPageSize = Number(value)
-    if (Number.isFinite(newPageSize) && newPageSize > 0) props.table.setPageSize(newPageSize)
-  }
+  const pageSize = computed({
+    get() {
+      return pagination.value.pageSize
+    },
+    set(v) {
+      props.table.setPageSize(v)
+    },
+  })
 </script>
 
 <template>
@@ -49,10 +51,7 @@
         {{ `Page ${currentPage} of ${totalPages}` }}
       </div>
       <div class="flex items-center gap-2 @max-2xl/content:flex-row-reverse">
-        <Select
-          :mode-value="`${pagination.pageSize}`"
-          @update:model-value="handlePageSizeChange"
-        >
+        <Select v-model="pageSize">
           <SelectTrigger class="h-8 w-18">
             <SelectValue :placeholder="`${pagination.pageSize}`" />
           </SelectTrigger>

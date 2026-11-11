@@ -51,7 +51,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
     }
   }
-  async function updateUserProfile(user: User & { password: string; newPassword: string }) {
+  async function updateUserProfile(user: User & { newPassword: string }) {
     await updateProfile(user)
     await getUserProfile()
   }

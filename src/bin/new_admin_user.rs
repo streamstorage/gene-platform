@@ -12,11 +12,11 @@ async fn main() {
     let mut name = String::new();
     let mut password = String::new();
 
-    println!("What is your email?");
+    println!("What would be your email?");
     stdin().read_line(&mut email).unwrap();
     let email = email.trim().to_lowercase();
 
-    println!("What is your name?");
+    println!("What would be your name?");
     stdin().read_line(&mut name).unwrap();
     let name = name.trim();
 
@@ -25,6 +25,6 @@ async fn main() {
     let password = password.trim();
 
     let admin = NewUser::admin(name, &email, password);
-    User::add_new_user(admin, &mut conn).await.unwrap();
-    println!("\nSaved admin user {} with email {}", name, email);
+    User::add(admin, &mut conn).await.unwrap();
+    println!("\nAdded admin user {} with email {}", name, email);
 }

@@ -13,7 +13,7 @@ export const usersApi = {
     return items
   },
 
-  addUser: async (user: User & { password: string }) => {
+  addUser: async (user: User) => {
     const headers = new Headers()
     headers.append('Content-Type', 'application/json')
 
@@ -28,7 +28,7 @@ export const usersApi = {
     return
   },
 
-  updateUser: async (user: User & { password: string }) => {
+  updateUser: async (user: User) => {
     const headers = new Headers()
     headers.append('Content-Type', 'application/json')
 

@@ -1,5 +1,5 @@
 use crate::db::Connection;
-use crate::handlers::auth::Credential;
+use crate::error::{ServiceError, ServiceResult};
 use crate::schema::users;
 use crate::utils::to_ascii_lowercase;
 use bcrypt::{DEFAULT_COST, hash, verify};
@@ -9,7 +9,7 @@ use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Identifiable, Serialize, Deserialize, Queryable, Insertable)]
-#[diesel(check_for_backend(diesel::mysql::Mysql))]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(table_name = users)]
 pub struct User {
     pub id: i32,
@@ -18,11 +18,14 @@ pub struct User {
     pub email: String,
     #[serde(skip_serializing)]
     pub password: String,
-    pub role: i32,
+    pub role: i16,
     pub active: bool,
     pub notes: Option<String>,
+    #[serde(skip_deserializing)]
     pub last_seen: Option<NaiveDateTime>,
+    #[serde(skip_deserializing)]
     pub created_at: NaiveDateTime,
+    #[serde(skip_deserializing)]
     pub updated_at: NaiveDateTime,
 }
 
@@ -33,7 +36,7 @@ pub struct NewUser {
     #[serde(deserialize_with = "to_ascii_lowercase")]
     pub email: String,
     pub password: String,
-    pub role: i32,
+    pub role: i16,
     #[serde(default)]
     pub active: bool,
     pub notes: Option<String>,
@@ -42,9 +45,9 @@ pub struct NewUser {
 impl NewUser {
     pub fn admin(name: &str, email: &str, password: &str) -> Self {
         Self {
-            name: name.to_string(),
-            email: email.to_ascii_lowercase(),
-            password: password.to_string(),
+            name: name.trim().to_string(),
+            email: email.trim().to_ascii_lowercase(),
+            password: password.trim().to_string(),
             role: 2,
             active: true,
             notes: None,
@@ -61,26 +64,27 @@ impl User {
         email: &str,
         password: &str,
         conn: &mut Connection,
-    ) -> Result<Option<User>, diesel::result::Error> {
+    ) -> ServiceResult<Option<User>> {
         let user = users::table
             .filter(users::dsl::email.eq(email))
             .get_result::<User>(conn)
             .await
             .optional()?;
         if let Some(user) = user
-            && let Ok(val) = verify(password, &user.password)
-            && val
+            && let Ok(verified) = verify(password, &user.password)
+            && verified
         {
             return Ok(Some(user));
         }
         Ok(None)
     }
 
-    pub async fn update_last_seen(user_id: i32, conn: &mut Connection) -> QueryResult<usize> {
+    pub async fn update_last_seen(user_id: i32, conn: &mut Connection) -> ServiceResult<()> {
         diesel::update(users::table.find(user_id))
             .set(users::dsl::last_seen.eq(diesel::dsl::now))
             .execute(conn)
-            .await
+            .await?;
+        Ok(())
     }
 
     pub async fn is_active(user_id: i32, conn: &mut Connection) -> bool {
@@ -101,19 +105,20 @@ impl User {
             .unwrap_or(false)
     }
 
-    pub async fn find_user_by_id(user_id: i32, conn: &mut Connection) -> QueryResult<User> {
-        users::table.find(user_id).get_result::<User>(conn).await
+    pub async fn find_user_by_id(user_id: i32, conn: &mut Connection) -> ServiceResult<User> {
+        let user = users::table.find(user_id).get_result::<User>(conn).await?;
+        Ok(user)
     }
 
-    pub async fn update_profile(
+    pub async fn update_with_verification(
         user_id: i32,
-        user: NewUser,
+        user: User,
         new_password: String,
         conn: &mut Connection,
-    ) -> QueryResult<bool> {
+    ) -> ServiceResult<()> {
         let u = users::table.find(user_id).get_result::<User>(conn).await?;
-        if let Ok(val) = verify(&user.password, &u.password)
-            && val
+        if let Ok(verified) = verify(&user.password, &u.password)
+            && verified
         {
             if new_password.is_empty() {
                 diesel::update(users::table.find(user_id))
@@ -135,31 +140,21 @@ impl User {
                     .execute(conn)
                     .await?;
             }
-            return Ok(true);
+            Ok(())
+        } else {
+            Err(ServiceError::bad_request("invalid password"))
         }
-        Ok(false)
     }
 
-    pub async fn reset_password(
-        cred: Credential,
-        conn: &mut Connection,
-    ) -> QueryResult<Option<User>> {
-        let user = users::table
-            .filter(users::dsl::email.eq(cred.email.to_ascii_lowercase()))
-            .get_result::<User>(conn)
-            .await
-            .optional()?;
-        if let Some(user) = user {
-            diesel::update(users::table.find(user.id))
-                .set(users::dsl::password.eq(encrypt_password(&cred.password)))
-                .execute(conn)
-                .await?;
-            return Ok(Some(user));
-        }
-        Ok(None)
+    pub async fn get_all(conn: &mut Connection) -> ServiceResult<Vec<User>> {
+        let users = users::table
+            .order(users::dsl::id.asc())
+            .load::<User>(conn)
+            .await?;
+        Ok(users)
     }
 
-    pub async fn add_new_user(user: NewUser, conn: &mut Connection) -> QueryResult<usize> {
+    pub async fn add(user: NewUser, conn: &mut Connection) -> ServiceResult<()> {
         let new_user = NewUser {
             email: user.email,
             name: user.name,
@@ -171,14 +166,11 @@ impl User {
         diesel::insert_into(users::table)
             .values(new_user)
             .execute(conn)
-            .await
+            .await?;
+        Ok(())
     }
 
-    pub async fn update_user(
-        user_id: i32,
-        user: NewUser,
-        conn: &mut Connection,
-    ) -> QueryResult<()> {
+    pub async fn update(user_id: i32, user: User, conn: &mut Connection) -> ServiceResult<()> {
         if user.password.is_empty() {
             diesel::update(users::table.find(user_id))
                 .set((
@@ -204,14 +196,32 @@ impl User {
         Ok(())
     }
 
-    pub async fn get_all(conn: &mut Connection) -> QueryResult<Vec<User>> {
-        users::table.load::<User>(conn).await
-    }
-
-    pub async fn activate(state: bool, ids: Vec<i32>, conn: &mut Connection) -> QueryResult<usize> {
+    pub async fn set_state(state: bool, ids: Vec<i32>, conn: &mut Connection) -> ServiceResult<()> {
         diesel::update(users::table.filter(users::dsl::id.eq_any(ids)))
             .set(users::dsl::active.eq(state))
             .execute(conn)
+            .await?;
+        Ok(())
+    }
+
+    // for cli
+    pub async fn reset_password(
+        email: String,
+        password: String,
+        conn: &mut Connection,
+    ) -> QueryResult<Option<User>> {
+        let user = users::table
+            .filter(users::dsl::email.eq(email))
+            .get_result::<User>(conn)
             .await
+            .optional()?;
+        if let Some(user) = user {
+            diesel::update(users::table.find(user.id))
+                .set(users::dsl::password.eq(encrypt_password(&password)))
+                .execute(conn)
+                .await?;
+            return Ok(Some(user));
+        }
+        Ok(None)
     }
 }

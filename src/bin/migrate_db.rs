@@ -1,11 +1,10 @@
-use diesel::mysql::MysqlConnection;
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use gene_platform::db;
 
 // 1. Embed migrations into the binary
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
-fn run_migrations(conn: &mut MysqlConnection) {
+fn run_migrations(conn: &mut db::SyncConnection) {
     // 2. Run pending migrations
     conn.run_pending_migrations(MIGRATIONS).unwrap();
 }

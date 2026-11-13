@@ -70,6 +70,6 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/web-server
 
-COPY --from=builder /web-server/target/release/gene-platform /web-server/target/release/new_admin_user /web-server/target/release/reset_password /web-server/target/release/migrate_db ./
+COPY --from=builder /web-server/target/release/gene-platform /web-server/target/release/new-admin-user /web-server/target/release/reset-password /web-server/target/release/migrate-db ./
 
 CMD [ "./gene-platform" ]

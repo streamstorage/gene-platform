@@ -81,13 +81,23 @@ pub trait SequenceFile: Send {
     }
 }
 
-pub trait Transform: Send + Sync {
+pub trait Process: Send + Sync {
     type Value;
 
+    fn mut_into(&mut self) -> Self::Value;
+
     /// Process a single sequence record, accumulating statistics.
-    fn transform(&self, sequence: &Sequence) -> Self::Value;
+    fn process(&mut self, sequence: &Sequence);
 
     fn none(&self) -> Self::Value;
+
+    fn clone_box(&self) -> Box<dyn Process<Value = Self::Value>>;
+}
+
+impl<T> Clone for Box<dyn Process<Value = T>> {
+    fn clone(&self) -> Box<dyn Process<Value = T>> {
+        (**self).clone_box()
+    }
 }
 
 /// Index constants for readability.

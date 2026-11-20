@@ -1,6 +1,6 @@
 use super::config::Config;
 use super::sequence::fastq::FastqFile;
-use super::sequence::{Sequence, SequenceFile, Transform};
+use super::sequence::{Process, Sequence, SequenceFile};
 
 use rayon::ThreadPoolBuilder;
 use rayon::prelude::*;
@@ -36,12 +36,22 @@ const BATCH_BYTES: usize = 1024 * 1024;
 fn open_sequence_file(
     config: &Config,
     path: impl AsRef<Path>,
-) -> io::Result<Box<dyn SequenceFile>> {
-    Ok(Box::new(FastqFile::open(config.decompress_threads, path)?))
+) -> io::Result<Vec<Box<dyn SequenceFile>>> {
+    let files = FastqFile::open(config, path)?;
+    Ok(files
+        .into_iter()
+        .map(|f| Box::new(f) as Box<dyn SequenceFile>)
+        .collect())
 }
 
 pub fn run(config: &Config, path: impl AsRef<Path>) -> io::Result<()> {
-    let mut seq_file = open_sequence_file(config, path)?;
+    let mut seq_files = open_sequence_file(config, path)?;
+    if seq_files.len() == 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "no sequence files",
+        ));
+    }
 
     // Feed every sequence through all modules. With a budget of one thread we
     // take the original single-threaded path (byte-identical, no pipeline
@@ -53,14 +63,26 @@ pub fn run(config: &Config, path: impl AsRef<Path>) -> io::Result<()> {
     //
     // There is no point in more workers than there are modules, so cap the
     // worker count by the number of active modules.
-    let num_processors = config.threads.saturating_sub(seq_file.background_threads());
-    println!("number of processers: {}", num_processors);
+    let num_processors = config
+        .threads
+        .saturating_sub(seq_files.iter().map(|f| f.background_threads()).sum());
+    println!("number of processors: {}", num_processors);
 
-    let transfomer = Box::new(super::qc::basic_stats::BasicStats);
-    if num_processors == 1 {
-        process_sequences_sequential(seq_file.as_mut(), transfomer)?;
+    let stats = super::qc::basic_stats::BasicStats::default();
+    let mut processer =
+        Box::new(stats) as Box<dyn Process<Value = super::qc::basic_stats::BasicStatsCounters>>;
+
+    // Current implementation:
+    // 1. sequencial read + process
+    // 2. divide file into multi parts, for each part, sequencial read + process on different thread and reduce on main thread.
+    // TODO:
+    // 1. divide file into multi part, for each part, read on on different thread, and send to one mpsc channel, and process on one thread
+    // 2. divide file into multi part, for each part, read on on different thread, and send to one mpmc channel, and process on different thread
+    // 3. divide file into multi part, for each part, read on on different thread, and send to multi spsc channel, and process on different thread
+    if num_processors == 1 && seq_files.len() == 1 {
+        process_sequences_sequential(seq_files[0].as_mut(), &mut processer)?;
     } else {
-        process_sequences_parallel(seq_file.as_mut(), num_processors, transfomer)?;
+        process_sequences_parallel(&mut seq_files, num_processors, processer)?;
     }
 
     Ok(())
@@ -68,13 +90,12 @@ pub fn run(config: &Config, path: impl AsRef<Path>) -> io::Result<()> {
 
 fn process_sequences_sequential<D: Add<Output = D> + Send + Display>(
     seq_file: &mut dyn SequenceFile,
-    tranformer: Box<dyn Transform<Value = D>>,
-) -> io::Result<()> {
-    let mut v = tranformer.none();
+    processer: &mut Box<dyn Process<Value = D>>,
+) -> io::Result<D> {
     loop {
         match seq_file.next() {
             Some(Ok(seq)) => {
-                v = v + tranformer.transform(&seq);
+                processer.process(&seq);
             }
             Some(Err(e)) => {
                 return Err(io::Error::new(io::ErrorKind::InvalidData, e));
@@ -82,82 +103,89 @@ fn process_sequences_sequential<D: Add<Output = D> + Send + Display>(
             None => break, // EOF
         }
     }
-    println!("{}", v);
-    Ok(())
+    Ok(processer.mut_into())
 }
 
 fn process_sequences_parallel<D: Add<Output = D> + Send + Display>(
-    seq_file: &mut dyn SequenceFile,
-    num_processors: usize,
-    tranformer: Box<dyn Transform<Value = D>>,
+    seq_files: &mut Vec<Box<dyn SequenceFile>>,
+    _num_processors: usize,
+    processer: Box<dyn Process<Value = D>>,
 ) -> io::Result<()> {
-    let (tx, rx) = sync_channel::<Arc<Vec<Sequence>>>(QUEUE_CAPACITY);
-    let mut reader_error: Option<io::Error> = None;
-
     let pool = ThreadPoolBuilder::new()
-        .num_threads(num_processors)
+        .num_threads(seq_files.len())
         .build()
-        .map_err(|e| io::Error::other(format!("Failed to create thread pool: {}", e)))
-        .unwrap();
+        .map_err(|e| io::Error::other(format!("Failed to create thread pool: {}", e)))?;
 
-    pool.scope(|scope| {
-        scope.spawn(move |_| {
-            let v = rx
-                .into_iter()
-                .par_bridge()
-                .map(|batch| {
-                    batch
-                        .iter()
-                        .map(|s| tranformer.transform(s))
-                        .reduce(|acc, e| acc + e)
-                        .unwrap()
-                })
-                .reduce(|| tranformer.none(), |acc, e| acc + e);
-            println!("{}", v);
-        });
+    let v = pool.install(|| {
+        seq_files
+            .par_iter_mut()
+            .map(|seq_file| {
+                let mut p = processer.clone();
+                process_sequences_sequential(seq_file.as_mut(), &mut p)
+            })
+            .try_reduce_with(|acc, item| Ok(acc + item))
+            .unwrap_or_else(|| Err(io::Error::new(io::ErrorKind::InvalidData, "empty")))
+    })?;
+    println!("{}", v);
 
-        // Reader loop runs on the calling thread: pull records, fill a batch,
-        // and publish it to every worker queue. A batch is published once it is
-        // full by either measure -- record count or bytes; see [`BATCH_BYTES`]
-        // for why a count alone is not enough.
-        let mut batch: Vec<Sequence> = Vec::with_capacity(BATCH_SIZE);
-        let mut batch_bytes = 0usize;
-        loop {
-            match seq_file.next() {
-                Some(Ok(seq)) => {
-                    batch_bytes += seq.heap_bytes();
-                    batch.push(seq);
-                    if batch.len() == BATCH_SIZE || batch_bytes >= BATCH_BYTES {
-                        let shared = std::mem::replace(&mut batch, Vec::with_capacity(BATCH_SIZE));
-                        let shared = Arc::new(shared);
-                        batch_bytes = 0;
-                        // A send error means a worker panicked and dropped
-                        // its receiver; stop reading so we don't deadlock on
-                        // a full queue, and surface the panic via join below.
-                        if tx.send(Arc::clone(&shared)).is_err() {
-                            break;
-                        }
-                        //println!("some sequence sent");
-                    }
-                }
-                Some(Err(e)) => {
-                    reader_error = Some(io::Error::new(io::ErrorKind::InvalidData, e));
-                    break;
-                }
-                None => break, // EOF
-            }
-        }
+    // let _ = pool.scope(move |scope| {
+    //     let (tx, rx) = sync_channel::<Arc<Vec<Sequence>>>(QUEUE_CAPACITY);
+    //     scope.spawn( move |_| {
+    //         while let Ok(_) = rx.recv() {
+    //             //println!("sequence received at {}", p_id);
+    //         }
+    //     });
 
-        // Publish the final partial batch (unless a read error aborted the run).
-        if reader_error.is_none() && !batch.is_empty() {
-            let shared = Arc::new(batch);
-            let _ = tx.send(Arc::clone(&shared));
-        }
+    //     let v = seq_files
+    //         .par_iter_mut()
+    //         .map(|seq_file| {
+    //             let tx = tx.clone();
 
-        // Dropping the senders signals EOF; workers exit their recv loop and
-        // return their (now fully-processed) module group.
-        drop(tx);
-    });
+    //             // Reader loop runs on the calling thread: pull records, fill a batch,
+    //             // and publish it to every worker queue. A batch is published once it is
+    //             // full by either measure -- record count or bytes; see [`BATCH_BYTES`]
+    //             // for why a count alone is not enough.
+    //             let mut batch: Vec<Sequence> = Vec::with_capacity(BATCH_SIZE);
+    //             let mut batch_bytes = 0usize;
+    //             let mut reader_error: Option<io::Error> = None;
+    //             loop {
+    //                 match seq_file.next() {
+    //                     Some(Ok(seq)) => {
+    //                         batch_bytes += seq.heap_bytes();
+    //                         batch.push(seq);
+    //                         if batch.len() == BATCH_SIZE || batch_bytes >= BATCH_BYTES {
+    //                             let shared = std::mem::replace(&mut batch, Vec::with_capacity(BATCH_SIZE));
+    //                             let shared = Arc::new(shared);
+    //                             batch_bytes = 0;
+    //                             // A send error means a worker panicked and dropped
+    //                             // its receiver; stop reading so we don't deadlock on
+    //                             // a full queue, and surface the panic via join below.
+    //                             if tx.send(Arc::clone(&shared)).is_err() {
+    //                                 break;
+    //                             }
+    //                         }
+    //                     }
+    //                     Some(Err(e)) => {
+    //                         reader_error = Some(io::Error::new(io::ErrorKind::InvalidData, e));
+    //                         break;
+    //                     }
+    //                     None => break, // EOF
+    //                 }
+    //             }
+
+    //             // Publish the final partial batch (unless a read error aborted the run).
+    //             if reader_error.is_none() && !batch.is_empty() {
+    //                 let shared = Arc::new(batch);
+    //                 let _ = tx.send(Arc::clone(&shared));
+    //             }
+
+    //             // Dropping the senders signals EOF; workers exit their recv loop and
+    //             // return their (now fully-processed) module group.
+    //             drop(tx);
+    //             1
+    //         }).reduce(|| 0 , |acc, item| acc+ item);
+    //     println!("{}", v);
+    // });
 
     Ok(())
 }

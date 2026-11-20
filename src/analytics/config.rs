@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 #[derive(Debug, Clone)]
 pub struct Config {
     /// Total thread budget for the run;
@@ -6,4 +8,7 @@ pub struct Config {
     /// thread. The runner lowers the default `1` to `0` for a file given only
     /// one thread.
     pub decompress_threads: usize,
+
+    pub index_file: Option<PathBuf>,
+    pub parallel: usize,
 }

@@ -17,11 +17,17 @@ struct Cli {
 
     /// Background gzip decoders per .fastq.gz file. The first counts towards
     /// --threads and keeps up with the analysis; any more do not count. 0
-    /// decodes on the reading thread, as -t 1 does.
+    /// decodes on the reading thread, parallel will be ignored.
     #[arg(long = "decompress-threads", value_name = "N", default_value = "1")]
     decompress_threads: usize,
 
-    /// Input files (one or more FastQ, BAM, or SAM files).
+    #[arg(short, long, value_name = "FILE")]
+    index_file: Option<PathBuf>,
+
+    #[arg(short, long, value_name = "N", value_parser = parse_threads, default_value = "1")]
+    parallel: usize,
+
+    /// Input file (one FastQ, BAM, or SAM file).
     #[arg(required = true)]
     file: PathBuf,
 }
@@ -42,10 +48,15 @@ fn main() {
     let config = Config {
         threads: total_threads,
         decompress_threads: cli.decompress_threads,
+        index_file: cli.index_file,
+        parallel: cli.parallel,
     };
 
     let start = Instant::now();
     runner::run(&config, cli.file).expect("runner");
-    let duration = start.elapsed(); // 等价于 Instant::now().duration_since(start)
-    println!("elapsed time: {:?}", duration);
+    let duration = start.elapsed();
+    let total_secs = duration.as_secs();
+    let minutes = total_secs / 60;
+    let seconds = total_secs % 60;
+    println!("elapsed time: {:02}:{:02}", minutes, seconds);
 }

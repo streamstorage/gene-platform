@@ -2,7 +2,7 @@
 // Corresponds to Modules/BasicStats.java
 
 use super::super::sequence::phred;
-use super::super::sequence::{IDX_A, IDX_C, IDX_G, IDX_T, Sequence, Transform, count_acgt};
+use super::super::sequence::{IDX_A, IDX_C, IDX_G, IDX_T, Process, Sequence, count_acgt};
 
 /// The raw accumulated counters behind the Basic Statistics table.
 ///
@@ -13,7 +13,7 @@ use super::super::sequence::{IDX_A, IDX_C, IDX_G, IDX_T, Sequence, Transform, co
 /// module wants the formatted rows, not the raw tallies. It is `Copy` so a
 /// consistent snapshot can be handed to the progress display without holding a
 /// lock while rendering.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct BasicStatsCounters {
     actual_count: u64,
     min_length: usize,
@@ -24,6 +24,7 @@ pub struct BasicStatsCounters {
     a_count: u64,
     t_count: u64,
     lowest_char: u16,
+    length_counts: Vec<u64>,
 }
 
 /// Spelled out rather than derived: `lowest_char` starts at a sentinel above
@@ -35,7 +36,7 @@ impl Default for BasicStatsCounters {
     fn default() -> Self {
         BasicStatsCounters {
             actual_count: 0,
-            min_length: 0,
+            min_length: usize::MAX,
             max_length: 0,
             total_bases: 0,
             g_count: 0,
@@ -43,6 +44,7 @@ impl Default for BasicStatsCounters {
             a_count: 0,
             t_count: 0,
             lowest_char: phred::NO_QUALITY_SEEN,
+            length_counts: Vec::new(),
         }
     }
 }
@@ -91,8 +93,7 @@ impl BasicStatsCounters {
             format_length(self.total_bases),
             sequence_length,
             mean_length.to_string(),
-            mean_length.to_string(),
-            //self.median_length.to_string(),
+            median_length(&self.length_counts).to_string(),
             gc.to_string(),
         ];
         Self::MEASURES.into_iter().zip(values).collect()
@@ -165,6 +166,15 @@ impl std::ops::Add for BasicStatsCounters {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
+        let (mut longer, shorter) = if self.length_counts.len() > other.length_counts.len() {
+            (self.length_counts, other.length_counts)
+        } else {
+            (other.length_counts, self.length_counts)
+        };
+        for i in 0..shorter.len() {
+            longer[i] += shorter[i];
+        }
+
         Self {
             actual_count: self.actual_count + other.actual_count,
             min_length: self.min_length.min(other.min_length),
@@ -175,6 +185,7 @@ impl std::ops::Add for BasicStatsCounters {
             a_count: self.a_count + other.a_count,
             t_count: self.t_count + other.t_count,
             lowest_char: self.lowest_char.min(other.lowest_char),
+            length_counts: longer,
         }
     }
 }
@@ -190,35 +201,52 @@ impl std::fmt::Display for BasicStatsCounters {
     }
 }
 
-#[derive(Default)]
-pub struct BasicStats;
+#[derive(Clone, Default)]
+pub struct BasicStats {
+    counters: BasicStatsCounters,
+}
 
-impl Transform for BasicStats {
+impl Process for BasicStats {
     type Value = BasicStatsCounters;
+
+    fn clone_box(&self) -> Box<dyn Process<Value = Self::Value>> {
+        Box::new(self.clone())
+    }
 
     fn none(&self) -> Self::Value {
         BasicStatsCounters::default()
     }
 
-    fn transform(&self, sequence: &Sequence) -> Self::Value {
+    fn process(&mut self, sequence: &Sequence) {
+        let c = &mut self.counters;
+        c.actual_count += 1;
+        c.total_bases += sequence.sequence.len() as u64;
+
+        let len = sequence.sequence.len();
+        if c.length_counts.len() <= len {
+            c.length_counts.resize(len + 1, 0);
+        }
+        c.length_counts[len] += 1;
+
+        c.min_length = c.min_length.min(len);
+        c.max_length = c.max_length.max(len);
+
         let counts = count_acgt(&sequence.sequence);
-        let length = sequence.sequence.len();
+        c.a_count += counts[IDX_A];
+        c.c_count += counts[IDX_C];
+        c.g_count += counts[IDX_G];
+        c.t_count += counts[IDX_T];
+
         let lowest_char = sequence
             .quality
             .iter()
             .min()
             .map_or_else(|| phred::NO_QUALITY_SEEN, |v| *v as u16);
 
-        BasicStatsCounters {
-            actual_count: 1u64,
-            min_length: length,
-            max_length: length,
-            total_bases: length as u64,
-            g_count: counts[IDX_G],
-            c_count: counts[IDX_C],
-            a_count: counts[IDX_A],
-            t_count: counts[IDX_T],
-            lowest_char,
-        }
+        c.lowest_char = c.lowest_char.min(lowest_char as u16);
+    }
+
+    fn mut_into(&mut self) -> Self::Value {
+        self.counters.to_owned()
     }
 }

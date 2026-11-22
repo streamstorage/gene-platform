@@ -1,8 +1,9 @@
 // Basic Statistics module
 // Corresponds to Modules/BasicStats.java
 
-use super::super::sequence::phred;
-use super::super::sequence::{IDX_A, IDX_C, IDX_G, IDX_T, Process, Sequence, count_acgt};
+use super::super::super::sequence::{
+    IDX_A, IDX_C, IDX_G, IDX_T, Process, Sequence, count_acgt, phred,
+};
 
 /// The raw accumulated counters behind the Basic Statistics table.
 ///
@@ -165,38 +166,33 @@ pub fn median_length(length_counts: &[u64]) -> usize {
 impl std::ops::Add for BasicStatsCounters {
     type Output = Self;
 
-    fn add(self, other: Self) -> Self {
-        let (mut longer, shorter) = if self.length_counts.len() > other.length_counts.len() {
-            (self.length_counts, other.length_counts)
+    fn add(self, rhs: Self) -> Self {
+        let (mut longer, shorter) = if self.length_counts.len() > rhs.length_counts.len() {
+            (self.length_counts, rhs.length_counts)
         } else {
-            (other.length_counts, self.length_counts)
+            (rhs.length_counts, self.length_counts)
         };
         for i in 0..shorter.len() {
             longer[i] += shorter[i];
         }
 
         Self {
-            actual_count: self.actual_count + other.actual_count,
-            min_length: self.min_length.min(other.min_length),
-            max_length: self.max_length.max(other.max_length),
-            total_bases: self.total_bases + other.total_bases,
-            g_count: self.g_count + other.g_count,
-            c_count: self.c_count + other.c_count,
-            a_count: self.a_count + other.a_count,
-            t_count: self.t_count + other.t_count,
-            lowest_char: self.lowest_char.min(other.lowest_char),
+            actual_count: self.actual_count + rhs.actual_count,
+            min_length: self.min_length.min(rhs.min_length),
+            max_length: self.max_length.max(rhs.max_length),
+            total_bases: self.total_bases + rhs.total_bases,
+            g_count: self.g_count + rhs.g_count,
+            c_count: self.c_count + rhs.c_count,
+            a_count: self.a_count + rhs.a_count,
+            t_count: self.t_count + rhs.t_count,
+            lowest_char: self.lowest_char.min(rhs.lowest_char),
             length_counts: longer,
         }
     }
 }
 
 impl std::fmt::Display for BasicStatsCounters {
-    // This trait requires `fmt` with this exact signature.
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // Write strictly the first element into the supplied output
-        // stream: `f`. Returns `fmt::Result` which indicates whether the
-        // operation succeeded or failed. Note that `write!` uses syntax which
-        // is very similar to `println!`.
         write!(f, "{:?}", self.rows())
     }
 }
@@ -211,10 +207,6 @@ impl Process for BasicStats {
 
     fn clone_box(&self) -> Box<dyn Process<Value = Self::Value>> {
         Box::new(self.clone())
-    }
-
-    fn none(&self) -> Self::Value {
-        BasicStatsCounters::default()
     }
 
     fn process(&mut self, sequence: &Sequence) {
@@ -243,10 +235,10 @@ impl Process for BasicStats {
             .min()
             .map_or_else(|| phred::NO_QUALITY_SEEN, |v| *v as u16);
 
-        c.lowest_char = c.lowest_char.min(lowest_char as u16);
+        c.lowest_char = c.lowest_char.min(lowest_char);
     }
 
-    fn mut_into(&mut self) -> Self::Value {
+    fn ref_into(&self) -> Self::Value {
         self.counters.to_owned()
     }
 }

@@ -82,19 +82,92 @@ pub trait SequenceFile: Send {
 }
 
 pub trait Process: Send + Sync {
-    type Value;
+    type Value: std::ops::Add<Output = Self::Value> + Send + std::fmt::Display + 'static;
 
-    fn mut_into(&mut self) -> Self::Value;
+    fn ref_into(&self) -> Self::Value;
 
     /// Process a single sequence record, accumulating statistics.
     fn process(&mut self, sequence: &Sequence);
 
-    fn none(&self) -> Self::Value;
-
     fn clone_box(&self) -> Box<dyn Process<Value = Self::Value>>;
 }
 
-impl<T> Clone for Box<dyn Process<Value = T>> {
+pub trait ProcessedValue: std::fmt::Display + Send {
+    fn add(
+        self: Box<Self>,
+        rhs: Box<dyn ProcessedValue>,
+    ) -> std::io::Result<Box<dyn ProcessedValue>>;
+
+    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any + Send>;
+}
+
+impl<T> ProcessedValue for T
+where
+    T: std::ops::Add<Output = T> + Send + std::fmt::Display + 'static,
+{
+    fn add(
+        self: Box<Self>,
+        rhs: Box<dyn ProcessedValue>,
+    ) -> std::io::Result<Box<dyn ProcessedValue>> {
+        let rhs = rhs.into_any().downcast::<T>().map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "incompatible process accumulator types",
+            )
+        })?;
+        Ok(Box::new(*self + *rhs))
+    }
+
+    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any + Send> {
+        self
+    }
+}
+
+pub trait ErasedProcess: Send + Sync {
+    fn process(&mut self, sequence: &Sequence);
+
+    fn ref_into(&self) -> Box<dyn ProcessedValue>;
+
+    fn clone_box(&self) -> Box<dyn ErasedProcess>;
+}
+
+impl Clone for Box<dyn ErasedProcess> {
+    fn clone(&self) -> Box<dyn ErasedProcess> {
+        (**self).clone_box()
+    }
+}
+
+struct ProcessAdapter<T: std::ops::Add<Output = T> + Send + std::fmt::Display + 'static>(
+    Box<dyn Process<Value = T>>,
+);
+
+impl<T> ErasedProcess for ProcessAdapter<T>
+where
+    T: std::ops::Add<Output = T> + Send + std::fmt::Display + 'static,
+{
+    fn process(&mut self, sequence: &Sequence) {
+        self.0.process(sequence);
+    }
+
+    fn ref_into(&self) -> Box<dyn ProcessedValue> {
+        Box::new(self.0.ref_into())
+    }
+
+    fn clone_box(&self) -> Box<dyn ErasedProcess> {
+        Box::new(ProcessAdapter(self.0.clone()))
+    }
+}
+
+pub fn erase_process<T>(process: Box<dyn Process<Value = T>>) -> Box<dyn ErasedProcess>
+where
+    T: std::ops::Add<Output = T> + Send + std::fmt::Display + 'static,
+{
+    Box::new(ProcessAdapter(process))
+}
+
+impl<T: std::ops::Add<Output = T> + Send + std::fmt::Display + 'static> Clone
+    for Box<dyn Process<Value = T>>
+{
     fn clone(&self) -> Box<dyn Process<Value = T>> {
         (**self).clone_box()
     }

@@ -259,18 +259,32 @@ impl FastqFile {
         };
 
         let file = File::open(path)?;
-        let index_file = config
-            .index_file
-            .as_ref()
-            .map(|f| File::open(f))
-            .transpose()?;
+        let index_file = config.index_file.as_ref().map(File::open).transpose()?;
 
         let fqs = match compression {
             "gz" => {
                 if let Some(mut index_file) = index_file {
                     let index = rapidgzip_core::DeflateIndex::read_native(&mut index_file)
                         .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
-                    if config.parallel > 1 {
+                    if let Some(decompress_threads) = config.decompress_threads {
+                        let gz = open_rapidgzip(file, Some(index), None, decompress_threads)?;
+                        let mut fq = Self {
+                            reader: FastqReader::Gzip(
+                                Box::new(BufReader::with_capacity(READ_BUFFER, gz.reader)),
+                                gz.progress,
+                            ),
+                            name,
+                            file_size,
+                            background_threads: gz.background_threads,
+                            next_sequence: None,
+                            line_number: 0,
+                            end_line: u64::MAX,
+                        };
+                        // Prime the look-ahead buffer by reading the first record.
+                        fq.read_next()?;
+                        vec![fq]
+                    } else {
+                        let parallel = config.threads / 2;
                         let total_lines = index.total_line_count().unwrap_or(0);
                         if total_lines == 0 || total_lines % 4 != 0 {
                             return Err(io::Error::new(
@@ -280,9 +294,9 @@ impl FastqFile {
                         }
                         let mut fqs = Vec::new();
                         let mut offset = 0u64;
-                        for i in 1..=config.parallel {
+                        for i in 1..=parallel {
                             // use div_ceil to cover all the lines
-                            let lines = total_lines.div_ceil(config.parallel as u64) * (i as u64);
+                            let lines = total_lines.div_ceil(parallel as u64) * (i as u64);
                             let reminder = (-(lines as i64)) % 4;
                             let lines = (lines as i64 + reminder) as u64;
 
@@ -290,7 +304,7 @@ impl FastqFile {
                                 file.try_clone()?,
                                 Some(index.clone()),
                                 Some(offset),
-                                config.decompress_threads,
+                                0,
                             )?;
                             let mut fq = Self {
                                 reader: FastqReader::Gzip(
@@ -310,27 +324,10 @@ impl FastqFile {
                             fqs.push(fq);
                         }
                         fqs
-                    } else {
-                        let gz =
-                            open_rapidgzip(file, Some(index), None, config.decompress_threads)?;
-                        let mut fq = Self {
-                            reader: FastqReader::Gzip(
-                                Box::new(BufReader::with_capacity(READ_BUFFER, gz.reader)),
-                                gz.progress,
-                            ),
-                            name,
-                            file_size,
-                            background_threads: gz.background_threads,
-                            next_sequence: None,
-                            line_number: 0,
-                            end_line: u64::MAX,
-                        };
-                        // Prime the look-ahead buffer by reading the first record.
-                        fq.read_next()?;
-                        vec![fq]
                     }
                 } else {
-                    let gz = open_rapidgzip(file, None, None, config.decompress_threads)?;
+                    let decompress_threads = config.decompress_threads.unwrap_or(1);
+                    let gz = open_rapidgzip(file, None, None, decompress_threads)?;
                     let mut fq = Self {
                         reader: FastqReader::Gzip(
                             Box::new(BufReader::with_capacity(READ_BUFFER, gz.reader)),

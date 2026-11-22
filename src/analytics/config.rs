@@ -4,11 +4,8 @@ use std::path::PathBuf;
 pub struct Config {
     /// Total thread budget for the run;
     pub threads: usize,
-    /// Background gzip decoders per `.gz` file; `0` decodes on the reading
-    /// thread. The runner lowers the default `1` to `0` for a file given only
-    /// one thread.
-    pub decompress_threads: usize,
-
+    /// Background gzip decoders per `.gz` file; `0` decodes on the reading thread.
+    pub decompress_threads: Option<usize>,
+    /// gzip index file.
     pub index_file: Option<PathBuf>,
-    pub parallel: usize,
 }

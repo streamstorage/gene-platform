@@ -1,6 +1,8 @@
 use clap::Parser;
 use gene_platform::analytics::config::Config;
+use gene_platform::analytics::qc::modules;
 use gene_platform::analytics::runner;
+use gene_platform::analytics::sequence::{Process, erase_process};
 use gene_platform::utils::available_parallelism;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -9,23 +11,20 @@ use std::time::Instant;
 #[derive(Parser, Debug)]
 #[command(name = "fastqc", version, about)]
 struct Cli {
-    /// Total thread budget for the run [default: available CPUs, up to 6].
-    /// Spread across the files processed simultaneously and then within each
-    /// file (a reader, its gzip decoder, and analysis workers).
+    /// Total thread budget for the run [default: (available CPUs).min(20) ].
+    /// Spread across the file processed simultaneously.
     #[arg(short, long, value_name = "N", value_parser = parse_threads)]
     threads: Option<usize>,
 
     /// Background gzip decoders per .fastq.gz file. The first counts towards
     /// --threads and keeps up with the analysis; any more do not count. 0
-    /// decodes on the reading thread, parallel will be ignored.
-    #[arg(long = "decompress-threads", value_name = "N", default_value = "1")]
-    decompress_threads: usize,
+    /// decodes on the reading thread.
+    #[arg(long = "decompress-threads", value_name = "N")]
+    decompress_threads: Option<usize>,
 
+    /// Gzip index file
     #[arg(short, long, value_name = "FILE")]
     index_file: Option<PathBuf>,
-
-    #[arg(short, long, value_name = "N", value_parser = parse_threads, default_value = "1")]
-    parallel: usize,
 
     /// Input file (one FastQ, BAM, or SAM file).
     #[arg(required = true)]
@@ -43,17 +42,37 @@ fn parse_threads(value: &str) -> Result<usize, String> {
 fn main() {
     let cli = Cli::parse();
 
-    let total_threads = cli.threads.unwrap_or_else(available_parallelism).max(1);
+    let total_threads = cli
+        .threads
+        .unwrap_or_else(|| available_parallelism().min(20))
+        .max(1);
+
+    if let Some(ref threads) = cli.decompress_threads
+        && total_threads <= *threads
+    {
+        eprintln!("threads should be above decompress_threads");
+        return;
+    }
 
     let config = Config {
         threads: total_threads,
         decompress_threads: cli.decompress_threads,
         index_file: cli.index_file,
-        parallel: cli.parallel,
     };
 
     let start = Instant::now();
-    runner::run(&config, cli.file).expect("runner");
+
+    let processers = vec![
+        erase_process(Box::new(modules::basic_stats::BasicStats::default())
+            as Box<dyn Process<Value = modules::basic_stats::BasicStatsCounters>>),
+        erase_process(
+            Box::new(modules::per_base_quality::PerBaseQuality::default())
+                as Box<dyn Process<Value = modules::per_base_quality::PerBaseQualityCounts>>,
+        ),
+    ];
+
+    runner::run(&config, cli.file, processers).expect("runner");
+
     let duration = start.elapsed();
     let total_secs = duration.as_secs();
     let minutes = total_secs / 60;

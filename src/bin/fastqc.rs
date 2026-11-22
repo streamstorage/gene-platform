@@ -69,6 +69,12 @@ fn main() {
             Box::new(modules::per_base_quality::PerBaseQuality::default())
                 as Box<dyn Process<Value = modules::per_base_quality::PerBaseQualityCounts>>,
         ),
+        erase_process(
+            Box::new(modules::per_sequence_quality::PerSequenceQuality::default())
+                as Box<
+                    dyn Process<Value = modules::per_sequence_quality::PerSequenceQualityScores>,
+                >,
+        ),
     ];
 
     runner::run(&config, cli.file, processers).expect("runner");

@@ -24,7 +24,15 @@ impl std::ops::Add for PerBaseQualityCounts {
 
 impl std::fmt::Display for PerBaseQualityCounts {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self.counts)
+        write!(
+            f,
+            "{}",
+            if self.counts.is_empty() {
+                0
+            } else {
+                self.counts[0].get_total_count()
+            }
+        )
     }
 }
 

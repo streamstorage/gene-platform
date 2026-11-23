@@ -1,5 +1,6 @@
 use clap::Parser;
 use gene_platform::analytics::config::Config;
+use gene_platform::analytics::qc::config::load_adapters;
 use gene_platform::analytics::qc::modules;
 use gene_platform::analytics::runner;
 use gene_platform::analytics::sequence::{Process, erase_process};
@@ -21,6 +22,27 @@ struct Cli {
     /// decodes on the reading thread.
     #[arg(long = "decompress-threads", value_name = "N")]
     decompress_threads: Option<usize>,
+
+    /// Specifies the truncation length used for duplicate detection.
+    /// Reads longer than this value will be truncated before checking for duplicates.
+    // Java uses --dup_length (underscore)
+    #[arg(
+        long = "dup_length",
+        alias = "dup-length",
+        value_name = "N",
+        default_value = "0"
+    )]
+    dup_length: usize,
+
+    /// Specifies a non-default file which contains the list of contaminants to
+    /// screen overrepresented sequences against.
+    #[arg(short = 'c', long, value_name = "FILE")]
+    contaminants: Option<PathBuf>,
+
+    // Specifies a non-default file which contains the list of adapter sequences
+    /// which will be explicitly searched against the library.
+    #[arg(short, long, value_name = "FILE")]
+    adapters: Option<PathBuf>,
 
     /// Gzip index file
     #[arg(short, long, value_name = "FILE")]
@@ -62,18 +84,35 @@ fn main() {
 
     let start = Instant::now();
 
+    let adapters = load_adapters(cli.adapters).expect("adapters");
     let processers = vec![
-        erase_process(Box::new(modules::basic_stats::BasicStats::default())
-            as Box<dyn Process<Value = modules::basic_stats::BasicStatsCounters>>),
+        erase_process(Box::new(modules::basic_stats::BasicStatistics::default())
+            as Box<dyn Process<Value = modules::basic_stats::StatisticsCounters>>),
         erase_process(
-            Box::new(modules::per_base_quality::PerBaseQuality::default())
+            Box::new(modules::per_base_quality::PerBaseSequenceQuality::default())
                 as Box<dyn Process<Value = modules::per_base_quality::PerBaseQualityCounts>>,
         ),
         erase_process(
-            Box::new(modules::per_sequence_quality::PerSequenceQuality::default())
-                as Box<
-                    dyn Process<Value = modules::per_sequence_quality::PerSequenceQualityScores>,
-                >,
+            Box::new(modules::per_sequence_quality::PerSequenceQualityScores::default())
+                as Box<dyn Process<Value = modules::per_sequence_quality::QualityScores>>,
+        ),
+        erase_process(
+            Box::new(modules::per_base_content::PerBaseSequenceContent::default())
+                as Box<dyn Process<Value = modules::per_base_content::SequenceContent>>,
+        ),
+        erase_process(
+            Box::new(modules::gc_content::PerSequenceGCContent::default())
+                as Box<dyn Process<Value = modules::gc_content::GCContent>>,
+        ),
+        erase_process(Box::new(modules::n_content::PerBaseNContent::default())
+            as Box<dyn Process<Value = modules::n_content::NContent>>),
+        erase_process(
+            Box::new(modules::length_distribution::SequenceLengthDistribution::default())
+                as Box<dyn Process<Value = modules::length_distribution::LengthDistribution>>,
+        ),
+        erase_process(
+            Box::new(modules::adapter_content::AdapterContent::new(&adapters))
+                as Box<dyn Process<Value = modules::adapter_content::AdapterContentData>>,
         ),
     ];
 

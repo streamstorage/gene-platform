@@ -15,7 +15,7 @@ use super::super::super::sequence::{
 /// consistent snapshot can be handed to the progress display without holding a
 /// lock while rendering.
 #[derive(Debug, Clone)]
-pub struct BasicStatsCounters {
+pub struct StatisticsCounters {
     actual_count: u64,
     min_length: usize,
     max_length: usize,
@@ -33,9 +33,9 @@ pub struct BasicStatsCounters {
 /// the counters can never legitimately reach — and one whose `rows()` reports
 /// a bogus encoding. This is the only constructor, so there is nowhere for that
 /// state to come from.
-impl Default for BasicStatsCounters {
+impl Default for StatisticsCounters {
     fn default() -> Self {
-        BasicStatsCounters {
+        Self {
             actual_count: 0,
             min_length: usize::MAX,
             max_length: 0,
@@ -50,7 +50,7 @@ impl Default for BasicStatsCounters {
     }
 }
 
-impl BasicStatsCounters {
+impl StatisticsCounters {
     /// The measures reported, in report order, minus the leading "Filename"
     /// row. [`Self::rows`] returns a value for each of these, in this order.
     pub const MEASURES: [&'static str; 7] = [
@@ -163,7 +163,7 @@ pub fn median_length(length_counts: &[u64]) -> usize {
     0
 }
 
-impl std::ops::Add for BasicStatsCounters {
+impl std::ops::Add for StatisticsCounters {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -191,19 +191,19 @@ impl std::ops::Add for BasicStatsCounters {
     }
 }
 
-impl std::fmt::Display for BasicStatsCounters {
+impl std::fmt::Display for StatisticsCounters {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{:?}", self.rows())
     }
 }
 
 #[derive(Clone, Default)]
-pub struct BasicStats {
-    counters: BasicStatsCounters,
+pub struct BasicStatistics {
+    counters: StatisticsCounters,
 }
 
-impl Process for BasicStats {
-    type Value = BasicStatsCounters;
+impl Process for BasicStatistics {
+    type Value = StatisticsCounters;
 
     fn clone_box(&self) -> Box<dyn Process<Value = Self::Value>> {
         Box::new(self.clone())

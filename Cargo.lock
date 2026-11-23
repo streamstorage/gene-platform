@@ -1515,6 +1515,7 @@ version = "1.0.0"
 dependencies = [
  "actix-session",
  "actix-web",
+ "aho-corasick",
  "base64 0.22.1",
  "bcrypt",
  "chrono",

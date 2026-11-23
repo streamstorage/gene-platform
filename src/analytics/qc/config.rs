@@ -72,18 +72,69 @@ fn parse_limits(text: &str) -> Limits {
     limits
 }
 
-/// Configuration for a FastQC run, mirroring all fields from Java FastQCConfig.
-#[derive(Debug, Clone)]
-pub struct Config {
-    pub limits_file: Option<PathBuf>,
+/// Parse a tab-delimited name/sequence file (adapters or contaminants).
+///
+/// Lines starting with '#' are comments, blank lines are skipped.
+/// Each data line has a name and sequence separated by one or more tabs.
+/// Leading/trailing whitespace on the sequence is trimmed.
+fn parse_name_sequence_file(text: &str) -> Vec<(String, String)> {
+    let mut entries = Vec::new();
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        // The Java code splits on tab and takes the first two fields.
+        // Names may contain spaces so we split on tab only.
+        if let Some(tab_pos) = trimmed.find('\t') {
+            let name = trimmed[..tab_pos].trim().to_string();
+            let seq = trimmed[tab_pos + 1..].trim().to_string();
+            if !name.is_empty() && !seq.is_empty() {
+                entries.push((name, seq));
+            }
+        }
+    }
+    entries
 }
 
-impl Config {
-    pub fn load_limits(&self) -> io::Result<Limits> {
-        let text = match &self.limits_file {
-            Some(path) => fs::read_to_string(path)?,
-            None => include_str!("./limits.txt").to_string(),
-        };
-        Ok(parse_limits(&text))
-    }
+/// Load module limits from the configured file or the embedded default.
+///
+/// Parsing matches `ModuleConfig.java` - lines starting with '#'
+/// are comments, blank lines are skipped, and each data line has whitespace-
+/// separated fields: module level value.
+pub fn load_limits(path: Option<PathBuf>) -> io::Result<Limits> {
+    let text = match path {
+        Some(path) => fs::read_to_string(path)?,
+        None => include_str!("./assets/limits.txt").to_string(),
+    };
+    Ok(parse_limits(&text))
+}
+
+/// Load contaminant sequences from the configured file or the embedded default.
+///
+/// Returns a list of (name, sequence) pairs.
+///
+/// Parsing matches the Java contaminant loading - same format as
+/// adapter files.
+pub fn load_contaminants(path: Option<PathBuf>) -> io::Result<Vec<(String, String)>> {
+    let text = match path {
+        Some(path) => fs::read_to_string(path)?,
+        None => include_str!("./assets/contaminant_list.txt").to_string(),
+    };
+    Ok(parse_name_sequence_file(&text))
+}
+
+/// Load adapter sequences from the configured file or the embedded default.
+///
+/// Returns a list of (name, sequence) pairs.
+///
+/// Parsing matches the Java adapter loading - lines starting with
+/// '#' are comments, blank lines are skipped, and each data line is tab-
+/// delimited with name and sequence columns.
+pub fn load_adapters(path: Option<PathBuf>) -> io::Result<Vec<(String, String)>> {
+    let text = match path {
+        Some(path) => fs::read_to_string(path)?,
+        None => include_str!("./assets/adapter_list.txt").to_string(),
+    };
+    Ok(parse_name_sequence_file(&text))
 }

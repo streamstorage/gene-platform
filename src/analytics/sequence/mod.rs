@@ -180,6 +180,22 @@ pub const IDX_G: usize = 2;
 pub const IDX_T: usize = 3;
 pub const IDX_N: usize = 4;
 
+/// Lookup table: maps ASCII byte to base index.
+/// 0=A, 1=C, 2=G, 3=T, 4=N, 5=other
+///
+/// Using a lookup table instead of match/if-else eliminates branch misprediction
+/// on random DNA data (where each branch has ~25% probability, the worst case
+/// for branch predictors).
+pub const BASE_INDEX: [u8; 256] = {
+    let mut table = [5u8; 256];
+    table[b'A' as usize] = IDX_A as u8;
+    table[b'C' as usize] = IDX_C as u8;
+    table[b'G' as usize] = IDX_G as u8;
+    table[b'T' as usize] = IDX_T as u8;
+    table[b'N' as usize] = IDX_N as u8;
+    table
+};
+
 /// Counts of uppercase `A`, `C`, `G` and `T` bytes.
 ///
 /// Per-chunk byte counters let all four counts vectorise; indexing a counter
@@ -189,10 +205,10 @@ pub fn count_acgt(seq: &[u8]) -> [u64; 4] {
     for chunk in seq.chunks(u8::MAX as usize) {
         let mut counts = [0u8; 4];
         for &b in chunk {
-            counts[0] += (b == b'A') as u8;
-            counts[1] += (b == b'C') as u8;
-            counts[2] += (b == b'G') as u8;
-            counts[3] += (b == b'T') as u8;
+            counts[IDX_A] += (b == b'A') as u8;
+            counts[IDX_C] += (b == b'C') as u8;
+            counts[IDX_G] += (b == b'G') as u8;
+            counts[IDX_T] += (b == b'T') as u8;
         }
         for (total, count) in totals.iter_mut().zip(counts) {
             *total += count as u64;

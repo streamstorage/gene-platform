@@ -3,22 +3,24 @@ use super::super::quality_count::QualityCount;
 
 #[derive(Clone, Default)]
 pub struct PerBaseQualityCounts {
-    counts: Vec<QualityCount>,
+    quality_counts: Vec<QualityCount>,
 }
 
 impl std::ops::Add for PerBaseQualityCounts {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        let (mut longer, shorter) = if self.counts.len() > rhs.counts.len() {
-            (self.counts, rhs.counts)
+        let (mut longer, shorter) = if self.quality_counts.len() > rhs.quality_counts.len() {
+            (self.quality_counts, rhs.quality_counts)
         } else {
-            (rhs.counts, self.counts)
+            (rhs.quality_counts, self.quality_counts)
         };
         for i in 0..shorter.len() {
             longer[i] += shorter[i].clone();
         }
-        Self { counts: longer }
+        Self {
+            quality_counts: longer,
+        }
     }
 }
 
@@ -27,21 +29,21 @@ impl std::fmt::Display for PerBaseQualityCounts {
         write!(
             f,
             "{}",
-            if self.counts.is_empty() {
+            if self.quality_counts.is_empty() {
                 0
             } else {
-                self.counts[0].get_total_count()
+                self.quality_counts[0].get_total_count()
             }
         )
     }
 }
 
 #[derive(Clone, Default)]
-pub struct PerBaseQuality {
-    quality_counts: PerBaseQualityCounts,
+pub struct PerBaseSequenceQuality {
+    counts: PerBaseQualityCounts,
 }
 
-impl Process for PerBaseQuality {
+impl Process for PerBaseSequenceQuality {
     type Value = PerBaseQualityCounts;
 
     fn clone_box(&self) -> Box<dyn Process<Value = Self::Value>> {
@@ -52,18 +54,18 @@ impl Process for PerBaseQuality {
         let qual = &sequence.quality;
 
         // Grow the quality_counts array if needed
-        if self.quality_counts.counts.len() < qual.len() {
-            self.quality_counts
-                .counts
+        if self.counts.quality_counts.len() < qual.len() {
+            self.counts
+                .quality_counts
                 .resize_with(qual.len(), QualityCount::default);
         }
 
         for (i, &q) in qual.iter().enumerate() {
-            self.quality_counts.counts[i].add_value(q);
+            self.counts.quality_counts[i].add_value(q);
         }
     }
 
     fn ref_into(&self) -> Self::Value {
-        self.quality_counts.to_owned()
+        self.counts.to_owned()
     }
 }

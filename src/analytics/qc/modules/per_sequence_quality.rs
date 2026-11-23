@@ -6,7 +6,7 @@ use super::super::super::sequence::{Process, Sequence};
 const MAX_QUALITY_SCORE: usize = 128;
 
 #[derive(Clone)]
-pub struct PerSequenceQualityScores {
+pub struct QualityScores {
     // JAVA COMPAT: Indexed by raw ASCII average quality (before offset subtraction),
     // computed using integer arithmetic: sum of quality chars / length.
     // Using a fixed array instead of HashMap eliminates hashing on every read.
@@ -14,7 +14,7 @@ pub struct PerSequenceQualityScores {
     has_data: bool,
 }
 
-impl Default for PerSequenceQualityScores {
+impl Default for QualityScores {
     fn default() -> Self {
         Self {
             average_score_counts: [0u64; MAX_QUALITY_SCORE],
@@ -23,7 +23,7 @@ impl Default for PerSequenceQualityScores {
     }
 }
 
-impl std::ops::Add for PerSequenceQualityScores {
+impl std::ops::Add for QualityScores {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -42,7 +42,7 @@ impl std::ops::Add for PerSequenceQualityScores {
     }
 }
 
-impl std::fmt::Display for PerSequenceQualityScores {
+impl std::fmt::Display for QualityScores {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if !self.has_data {
             write!(f, "{}-{}", 0, 0)
@@ -63,12 +63,12 @@ impl std::fmt::Display for PerSequenceQualityScores {
 }
 
 #[derive(Clone, Default)]
-pub struct PerSequenceQuality {
-    scores: PerSequenceQualityScores,
+pub struct PerSequenceQualityScores {
+    scores: QualityScores,
 }
 
-impl Process for PerSequenceQuality {
-    type Value = PerSequenceQualityScores;
+impl Process for PerSequenceQualityScores {
+    type Value = QualityScores;
 
     fn clone_box(&self) -> Box<dyn Process<Value = Self::Value>> {
         Box::new(self.clone())

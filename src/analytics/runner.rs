@@ -46,7 +46,7 @@ pub fn run(
     config: &Config,
     path: impl AsRef<Path>,
     processers: Vec<Box<dyn ErasedProcess>>,
-) -> io::Result<()> {
+) -> io::Result<Vec<Box<dyn ProcessedValue>>> {
     let mut seq_files = open_sequence_file(config, path)?;
     if seq_files.is_empty() {
         return Err(io::Error::new(
@@ -78,15 +78,12 @@ pub fn run(
     // TODO:
     // 1. divide file into multi part, for each part, read on on different thread, and send to one mpsc channel, and process on one thread
     // 2. divide file into multi part, for each part, read on on different thread, and send to one mpmc channel, and process on different threads.
-    if seq_files.len() == 1 && num_processors == 1 {
-        let v = process_sequences_sequential(seq_files[0].as_mut(), processers)?;
-        for v in v {
-            println!("{}", v);
-        }
+    let v = if seq_files.len() == 1 && num_processors == 1 {
+        process_sequences_sequential(seq_files[0].as_mut(), processers)?
     } else {
-        process_sequences_parallel(&mut seq_files, num_processors, processers)?;
-    }
-    Ok(())
+        process_sequences_parallel(&mut seq_files, num_processors, processers)?
+    };
+    Ok(v)
 }
 
 fn process_sequences_sequential(
@@ -111,7 +108,7 @@ fn process_sequences_parallel(
     seq_files: &mut Vec<Box<dyn SequenceFile>>,
     _num_processors: usize,
     processers: Vec<Box<dyn ErasedProcess>>,
-) -> io::Result<()> {
+) -> io::Result<Vec<Box<dyn ProcessedValue>>> {
     let pool = ThreadPoolBuilder::new()
         .num_threads(seq_files.len())
         .build()
@@ -210,9 +207,5 @@ fn process_sequences_parallel(
             })
             .unwrap_or_else(|| Err(io::Error::new(io::ErrorKind::InvalidData, "empty")))
     })?;
-
-    for v in v {
-        println!("{}", v);
-    }
-    Ok(())
+    Ok(v)
 }

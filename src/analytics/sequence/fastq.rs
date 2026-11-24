@@ -240,7 +240,7 @@ impl FastqFile {
         let name = path
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_else(|| path.to_string_lossy().into_owned());
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Invalid file"))?;
 
         // For stdin, Java sets fileSize to Long.MAX_VALUE.
         let file_size = std::fs::metadata(path)?.len();

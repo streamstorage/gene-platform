@@ -1,6 +1,12 @@
 use super::super::super::sequence::{Process, Sequence};
+use super::super::base_group::BaseGroup;
+use super::super::config::{Limits, LimitsExt};
+use super::super::report::charts::line_graph::{LineGraphData, render_line_graph};
+use super::super::report::charts::scaled_chart_width;
+use super::QCModule;
 use aho_corasick::{Span, packed};
 use memchr::memmem;
+use std::io;
 
 #[derive(Clone)]
 struct Adapter {
@@ -124,53 +130,12 @@ impl AdapterSearch {
 pub struct AdapterContentData {
     adapters: Vec<Adapter>,
     total_count: u64,
+    longest_sequence: usize,
+    longest_adapter: usize,
+    computed: Option<ComputedEnrichment>,
 }
 
 impl AdapterContentData {
-    pub fn new(adapters: Vec<Adapter>) -> Self {
-        Self {
-            adapters,
-            total_count: 0,
-        }
-    }
-}
-
-impl std::ops::Add for AdapterContentData {
-    type Output = Self;
-
-    fn add(mut self, mut rhs: Self) -> Self {
-        let total_count = self.total_count + rhs.total_count;
-        for i in 0..self.adapters.len() {
-            if self.adapters[i].first_hits.len() < rhs.adapters[i].first_hits.len() {
-                std::mem::swap(&mut self.adapters[i], &mut rhs.adapters[i])
-            };
-            for j in 0..rhs.adapters[i].first_hits.len() {
-                self.adapters[i].first_hits[i] += rhs.adapters[i].first_hits[j];
-            }
-        }
-
-        Self {
-            adapters: self.adapters,
-            total_count,
-        }
-    }
-}
-
-impl std::fmt::Display for AdapterContentData {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.total_count)
-    }
-}
-
-#[derive(Clone)]
-pub struct AdapterContent {
-    data: AdapterContentData,
-    search: AdapterSearch,
-    longest_sequence: usize,
-    longest_adapter: usize,
-}
-
-impl AdapterContent {
     pub fn new(adapter_entries: &[(String, String)]) -> Self {
         let mut longest_adapter = 0;
         let mut adapters = Vec::with_capacity(adapter_entries.len());
@@ -193,10 +158,171 @@ impl AdapterContent {
         }
 
         Self {
-            data: AdapterContentData::new(adapters),
-            search: AdapterSearch::new(adapter_entries),
-            longest_sequence: 0,
+            adapters,
+            total_count: 0,
             longest_adapter,
+            longest_sequence: 0,
+            computed: None,
+        }
+    }
+
+    /// No read was longer than the longest adapter, so Java skips the analysis
+    /// (no table or chart) and just warns.
+    fn reads_too_short(&self) -> bool {
+        self.longest_adapter > self.longest_sequence
+    }
+
+    /// Derive adapter names from the adapters Vec (avoids storing a redundant copy).
+    fn adapter_names(&self) -> Vec<String> {
+        self.adapters.iter().map(|a| a.name.clone()).collect()
+    }
+}
+
+impl std::ops::Add for AdapterContentData {
+    type Output = Self;
+
+    fn add(mut self, mut rhs: Self) -> Self {
+        let total_count = self.total_count + rhs.total_count;
+        for i in 0..self.adapters.len() {
+            if self.adapters[i].first_hits.len() < rhs.adapters[i].first_hits.len() {
+                std::mem::swap(&mut self.adapters[i], &mut rhs.adapters[i])
+            };
+            for j in 0..rhs.adapters[i].first_hits.len() {
+                self.adapters[i].first_hits[i] += rhs.adapters[i].first_hits[j];
+            }
+        }
+
+        Self {
+            adapters: self.adapters,
+            total_count,
+            longest_sequence: self.longest_sequence.max(rhs.longest_sequence),
+            longest_adapter: self.longest_adapter,
+            computed: None,
+        }
+    }
+}
+
+impl std::fmt::Display for AdapterContentData {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.total_count)
+    }
+}
+
+impl QCModule for AdapterContentData {
+    fn name(&self) -> &str {
+        "Adapter Content"
+    }
+
+    fn calc(&mut self, limits: &Limits) -> io::Result<()> {
+        let all_positions: Vec<Vec<u64>> = self
+            .adapters
+            .iter()
+            .map(Adapter::cumulative_positions)
+            .collect();
+        let max_length = all_positions.iter().map(Vec::len).max().unwrap_or(0);
+
+        // Group positions using BaseGroup
+        let groups = BaseGroup::make_base_groups(max_length, false, false);
+
+        let x_labels: Vec<String> = groups.iter().map(|g| g.label()).collect();
+
+        let mut enrichments = vec![vec![0.0f64; groups.len()]; self.adapters.len()];
+
+        for (a, positions) in all_positions.iter().enumerate() {
+            for (g, group) in groups.iter().enumerate() {
+                // lowerCount() is 1-based in Java, we use 0-based internally
+                // Java: p=groups[g].lowerCount()-1; p<groups[g].upperCount()
+                let lower = group.lower_count; // already 0-based
+                let upper = group.upper_count; // already 0-based, inclusive
+
+                for p in lower..=upper {
+                    if p < positions.len() {
+                        enrichments[a][g] +=
+                            (positions[p] as f64 * 100.0) / self.total_count as f64;
+                    }
+                }
+
+                // Average over the group width
+                enrichments[a][g] /= (upper - lower + 1) as f64;
+            }
+        }
+
+        self.computed = Some(ComputedEnrichment {
+            enrichments,
+            x_labels,
+            error_threshold: limits.threshold("adapter\terror", 10.0),
+            warn_threshold: limits.threshold("adapter\twarn", 5.0),
+            ignored: limits.is_ignored("adapter"),
+        });
+        Ok(())
+    }
+
+    fn ignore_in_report(&self) -> bool {
+        self.computed.as_ref().unwrap().ignored
+    }
+    // BasicStats never raises error or warning
+    fn raises_error(&self) -> bool {
+        let computed = self.computed.as_ref().unwrap();
+        computed.enrichments.iter().any(|enrichments| {
+            enrichments
+                .iter()
+                .any(|&val| val > computed.error_threshold)
+        })
+    }
+
+    fn raises_warning(&self) -> bool {
+        if self.reads_too_short() {
+            return true;
+        }
+        let computed = self.computed.as_ref().unwrap();
+        computed
+            .enrichments
+            .iter()
+            .any(|enrichments| enrichments.iter().any(|&val| val > computed.warn_threshold))
+    }
+
+    fn content_msg(&self) -> Option<String> {
+        if self.reads_too_short() {
+            Some(format!(
+                "Can't analyse adapters as read length is too short ({} vs {})",
+                self.longest_adapter, self.longest_sequence
+            ))
+        } else {
+            None
+        }
+    }
+
+    fn content_chart(&self) -> Option<(&str, String)> {
+        if self.reads_too_short() {
+            return None;
+        }
+        let computed = self.computed.clone().unwrap();
+
+        let svg = render_line_graph(&LineGraphData {
+            width: scaled_chart_width(computed.x_labels.len()),
+            data: computed.enrichments.clone(),
+            min_y: 0.0,
+            max_y: 100.0,
+            x_label: "Position in read (bp)".to_string(),
+            series_names: self.adapter_names(),
+            x_categories: computed.x_labels.clone(),
+            title: "% Adapter".to_string(),
+        });
+        Some(("Adapter graph", svg))
+    }
+}
+
+#[derive(Clone)]
+pub struct AdapterContent {
+    data: AdapterContentData,
+    search: AdapterSearch,
+}
+
+impl AdapterContent {
+    pub fn new(adapter_entries: &[(String, String)]) -> Self {
+        Self {
+            data: AdapterContentData::new(adapter_entries),
+            search: AdapterSearch::new(adapter_entries),
         }
     }
 }
@@ -214,9 +340,9 @@ impl Process for AdapterContent {
         let seq_len = sequence.sequence.len();
 
         // Java only grows the arrays once a read is longer than the longest adapter.
-        if seq_len > self.longest_sequence && seq_len > self.longest_adapter {
-            self.longest_sequence = seq_len;
-            let new_len = (self.longest_sequence - self.longest_adapter) + 1;
+        if seq_len > self.data.longest_sequence && seq_len > self.data.longest_adapter {
+            self.data.longest_sequence = seq_len;
+            let new_len = (self.data.longest_sequence - self.data.longest_adapter) + 1;
             for adapter in &mut self.data.adapters {
                 adapter.first_hits.resize(new_len, 0);
             }
@@ -230,4 +356,13 @@ impl Process for AdapterContent {
     fn ref_into(&self) -> Self::Value {
         self.data.to_owned()
     }
+}
+
+#[derive(Clone)]
+struct ComputedEnrichment {
+    enrichments: Vec<Vec<f64>>,
+    x_labels: Vec<String>,
+    error_threshold: f64,
+    warn_threshold: f64,
+    ignored: bool,
 }

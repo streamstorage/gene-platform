@@ -116,6 +116,49 @@ impl QualityCount {
     }
 }
 
+/// Find the global minimum and maximum quality characters across any iterable
+/// of QualityCount values (owned or references).
+///
+/// Replicates the `calculateOffsets()` pattern used in
+/// PerBaseQualityScores.java and PerTileQualityScores.java.
+/// Returns (0, 0) if no quality data has been recorded.
+///
+/// Accepts `&[QualityCount]`, `&[&QualityCount]`, or any iterator that yields
+/// items borrowable as `&QualityCount`.
+pub fn calculate_offsets<I, Q>(counts: I) -> (u8, u8)
+where
+    I: IntoIterator<Item = Q>,
+    Q: std::borrow::Borrow<QualityCount>,
+{
+    let mut min_char: u8 = 0;
+    let mut max_char: u8 = 0;
+    let mut first = true;
+
+    for item in counts {
+        let qc = item.borrow();
+        if first {
+            if let (Some(lo), Some(hi)) = (qc.get_min_char(), qc.get_max_char()) {
+                min_char = lo;
+                max_char = hi;
+                first = false;
+            }
+        } else {
+            if let Some(mc) = qc.get_min_char()
+                && mc < min_char
+            {
+                min_char = mc;
+            }
+            if let Some(mc) = qc.get_max_char()
+                && mc > max_char
+            {
+                max_char = mc;
+            }
+        }
+    }
+
+    (min_char, max_char)
+}
+
 impl std::ops::AddAssign for QualityCount {
     fn add_assign(&mut self, rhs: Self) {
         for (x, y) in self.actual_counts.iter_mut().zip(rhs.actual_counts.iter()) {

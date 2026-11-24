@@ -216,3 +216,19 @@ pub fn count_acgt(seq: &[u8]) -> [u64; 4] {
     }
     totals
 }
+
+/// Strip known sequencing file extensions from a filename.
+///
+/// Matches the exact chain of replaceAll calls in OfflineRunner.java:181
+pub fn strip_extensions(name: &str) -> String {
+    let mut result = name.to_string();
+    // Strip in this exact order, matching Java's replaceAll chain
+    for ext in &[
+        ".gz", ".bz2", ".txt", ".fastq", ".fq", ".csfastq", ".sam", ".bam", ".ubam", ".fast5",
+    ] {
+        if result.ends_with(ext) {
+            result = result[..result.len() - ext.len()].to_string();
+        }
+    }
+    result
+}

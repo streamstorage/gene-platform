@@ -8,3 +8,5 @@ pub mod models;
 pub mod routers;
 pub mod schema;
 pub mod utils;
+
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");

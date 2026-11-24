@@ -4,6 +4,8 @@
 use super::super::super::sequence::{
     IDX_A, IDX_C, IDX_G, IDX_T, Process, Sequence, count_acgt, phred,
 };
+use super::QCModule;
+use std::fmt::Write;
 
 /// The raw accumulated counters behind the Basic Statistics table.
 ///
@@ -53,7 +55,8 @@ impl Default for StatisticsCounters {
 impl StatisticsCounters {
     /// The measures reported, in report order, minus the leading "Filename"
     /// row. [`Self::rows`] returns a value for each of these, in this order.
-    pub const MEASURES: [&'static str; 7] = [
+    pub const MEASURES: [&'static str; 8] = [
+        "File type",
         "Encoding",
         "Total Sequences",
         "Total Bases",
@@ -89,6 +92,7 @@ impl StatisticsCounters {
             .unwrap_or(0);
 
         let values = [
+            "Conventional base calls".to_string(),
             encoding,
             self.actual_count.to_string(),
             format_length(self.total_bases),
@@ -194,6 +198,33 @@ impl std::ops::Add for StatisticsCounters {
 impl std::fmt::Display for StatisticsCounters {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{:?}", self.rows())
+    }
+}
+
+impl QCModule for StatisticsCounters {
+    fn name(&self) -> &str {
+        "Basic Statistics"
+    }
+
+    // BasicStats never raises error or warning
+    fn raises_error(&self) -> bool {
+        false
+    }
+
+    fn raises_warning(&self) -> bool {
+        false
+    }
+
+    fn content_table(&self) -> Option<String> {
+        let mut writer = String::new();
+        // Header row matches writeTextTable output from AbstractQCModule
+        let _ = writeln!(writer, "#Measure\tValue");
+
+        for (measure, value) in self.rows() {
+            let _ = writeln!(writer, "{}\t{}", measure, value);
+        }
+
+        Some(writer)
     }
 }
 

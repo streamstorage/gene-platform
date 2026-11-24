@@ -1,9 +1,9 @@
 use clap::Parser;
 use gene_platform::analytics::config::Config;
-use gene_platform::analytics::qc::config::load_adapters;
-use gene_platform::analytics::qc::modules;
+use gene_platform::analytics::qc::config::{load_adapters, load_limits};
+use gene_platform::analytics::qc::{modules, report};
 use gene_platform::analytics::runner;
-use gene_platform::analytics::sequence::{Process, erase_process};
+use gene_platform::analytics::sequence::{Process, erase_process, strip_extensions};
 use gene_platform::utils::available_parallelism;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -43,6 +43,11 @@ struct Cli {
     /// which will be explicitly searched against the library.
     #[arg(short, long, value_name = "FILE")]
     adapters: Option<PathBuf>,
+
+    /// Specifies a non-default file which contains a set of criteria used to
+    /// determine the warn/error limits for the various modules.
+    #[arg(short, long, value_name = "FILE")]
+    limits: Option<PathBuf>,
 
     /// Gzip index file
     #[arg(short, long, value_name = "FILE")]
@@ -116,7 +121,48 @@ fn main() {
         ),
     ];
 
-    runner::run(&config, cli.file, processers).expect("runner");
+    let file_name = cli
+        .file
+        .file_name()
+        .expect("file name")
+        .to_string_lossy()
+        .into_owned();
+    let file_folder = cli.file.parent().expect("file folder");
+    let base_name = strip_extensions(&file_name);
+
+    let html_path = file_folder.join(format!("{}_pgx_fastqc.html", base_name));
+
+    let mut values = runner::run(&config, cli.file, processers).expect("runner");
+    let basic_statistics = values
+        .remove(0)
+        .into_any()
+        .downcast::<modules::basic_stats::StatisticsCounters>()
+        .expect("cast StatisticsCounters");
+    let per_base_sequence_quality = values
+        .remove(0)
+        .into_any()
+        .downcast::<modules::per_base_quality::PerBaseQualityCounts>()
+        .expect("cast PerBaseQualityCounts");
+    let adapter_content = values
+        .pop()
+        .unwrap()
+        .into_any()
+        .downcast::<modules::adapter_content::AdapterContentData>()
+        .expect("cast AdapterContentData");
+
+    let limits = load_limits(cli.limits).expect("limits");
+    let mut modules = [
+        basic_statistics as Box<dyn modules::QCModule>,
+        per_base_sequence_quality as Box<dyn modules::QCModule>,
+        adapter_content as Box<dyn modules::QCModule>,
+    ];
+    for module in modules.iter_mut() {
+        module.calc(&limits).expect("calc");
+    }
+
+    let html_content =
+        report::html::generate_html_report(&modules, &file_name).expect("generate report");
+    std::fs::write(&html_path, &html_content).expect("write report");
 
     let duration = start.elapsed();
     let total_secs = duration.as_secs();

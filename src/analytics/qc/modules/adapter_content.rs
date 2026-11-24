@@ -187,8 +187,12 @@ impl std::ops::Add for AdapterContentData {
             if self.adapters[i].first_hits.len() < rhs.adapters[i].first_hits.len() {
                 std::mem::swap(&mut self.adapters[i], &mut rhs.adapters[i])
             };
-            for j in 0..rhs.adapters[i].first_hits.len() {
-                self.adapters[i].first_hits[i] += rhs.adapters[i].first_hits[j];
+            let len = rhs.adapters[i].first_hits.len();
+            for (x, y) in self.adapters[i].first_hits[..len]
+                .iter_mut()
+                .zip(rhs.adapters[i].first_hits.iter())
+            {
+                *x += *y;
             }
         }
 

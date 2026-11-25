@@ -1,4 +1,9 @@
 use super::super::super::sequence::{Process, Sequence, count_acgt};
+use super::super::config::{Limits, LimitsExt};
+use super::super::report::charts::CHART_WIDTH;
+use super::super::report::charts::line_graph::{LineGraphData, render_line_graph};
+use super::QCModule;
+use std::io;
 
 /// Mirrors GCModel/GCModelValue.java - a single percentage bin and its increment weight.
 #[derive(Clone)]
@@ -70,18 +75,43 @@ impl GCModel {
 #[derive(Clone)]
 pub struct GCContent {
     gc_distribution: [f64; 101],
+    distribution: Option<Distribution>,
 }
 
 impl Default for GCContent {
     fn default() -> Self {
         Self {
             gc_distribution: [0.0; 101],
+            distribution: None,
         }
     }
 }
 
-impl GCContent {
-    fn calculate_distribution(&self) -> f64 {
+impl std::ops::Add for GCContent {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        let gc_distribution =
+            std::array::from_fn(|i| self.gc_distribution[i] + rhs.gc_distribution[i]);
+        Self {
+            gc_distribution,
+            distribution: None,
+        }
+    }
+}
+
+impl std::fmt::Display for GCContent {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "gc_distribution: {}", self.gc_distribution.len())
+    }
+}
+
+impl QCModule for GCContent {
+    fn name(&self) -> &str {
+        "Per sequence GC contents"
+    }
+
+    fn calc(&mut self, limits: &Limits) -> io::Result<()> {
         let mut total_count: f64 = 0.0;
         let mut first_mode: usize = 0;
         let mut mode_count: f64 = 0.0;
@@ -167,24 +197,64 @@ impl GCContent {
         deviation_percent /= total_count;
         deviation_percent *= 100.0;
 
-        // self.theoretical_distribution = Some(theoretical);
-        deviation_percent
+        self.distribution = Some(Distribution {
+            deviation_percent,
+            theoretical_distribution: theoretical,
+            error_threshold: limits.threshold("gc_sequence\terror", 30.0),
+            warn_threshold: limits.threshold("gc_sequence\twarn", 15.0),
+            ignored: limits.is_ignored("gc_sequence"),
+        });
+
+        Ok(())
     }
-}
 
-impl std::ops::Add for GCContent {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self {
-        let gc_distribution =
-            std::array::from_fn(|i| self.gc_distribution[i] + rhs.gc_distribution[i]);
-        Self { gc_distribution }
+    fn ignore_in_report(&self) -> bool {
+        self.distribution.as_ref().unwrap().ignored
     }
-}
+    // BasicStats never raises error or warning
+    fn raises_error(&self) -> bool {
+        let distribution = self.distribution.as_ref().unwrap();
+        distribution.deviation_percent > distribution.error_threshold
+    }
 
-impl std::fmt::Display for GCContent {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "deviation percent: {}", self.calculate_distribution())
+    fn raises_warning(&self) -> bool {
+        let distribution = self.distribution.as_ref().unwrap();
+        distribution.deviation_percent > distribution.warn_threshold
+    }
+
+    fn content_chart(&self) -> Option<(&str, String)> {
+        let distribution = self.distribution.as_ref().unwrap();
+        let gc_dist: Vec<f64> = self.gc_distribution.to_vec();
+        let theoretical = distribution.theoretical_distribution.to_vec();
+
+        // max is the maximum of either distribution
+        let max_val = gc_dist
+            .iter()
+            .chain(theoretical.iter())
+            .cloned()
+            .fold(0.0_f64, f64::max);
+
+        // Java passes raw max to LineGraph (no ceil rounding)
+        let max_y = max_val;
+
+        let x_categories: Vec<String> = (0..101).map(|i| format!("{}", i)).collect();
+
+        // Two series: GC distribution and theoretical distribution
+        let svg = render_line_graph(&LineGraphData {
+            width: CHART_WIDTH,
+            data: vec![gc_dist, theoretical],
+            min_y: 0.0,
+            max_y,
+            x_label: "Mean GC content (%)".to_string(),
+            series_names: vec![
+                "GC count per read".to_string(),
+                "Theoretical Distribution".to_string(),
+            ],
+            x_categories,
+            title: "GC distribution over all sequences".to_string(),
+        });
+
+        Some(("Per sequence GC content graph", svg))
     }
 }
 
@@ -248,4 +318,13 @@ impl Process for PerSequenceGCContent {
     fn ref_into(&self) -> Self::Value {
         self.content.to_owned()
     }
+}
+
+#[derive(Clone)]
+struct Distribution {
+    deviation_percent: f64,
+    theoretical_distribution: [f64; 101],
+    error_threshold: f64,
+    warn_threshold: f64,
+    ignored: bool,
 }

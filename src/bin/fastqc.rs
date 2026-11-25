@@ -158,11 +158,25 @@ fn main() {
         .remove(0)
         .into_any()
         .downcast::<modules::per_base_content::SequenceContent>()
-        .expect("cast QualityScores");
+        .expect("cast SequenceContent");
+    let per_sequence_gc_content = values
+        .remove(0)
+        .into_any()
+        .downcast::<modules::gc_content::GCContent>()
+        .expect("cast GCContent");
+    let per_base_n_content = values
+        .remove(0)
+        .into_any()
+        .downcast::<modules::n_content::NContent>()
+        .expect("cast NContent");
+    let sequence_length_distribution = values
+        .remove(0)
+        .into_any()
+        .downcast::<modules::length_distribution::LengthDistribution>()
+        .expect("cast LengthDistribution");
 
     let adapter_content = values
-        .pop()
-        .unwrap()
+        .remove(0)
         .into_any()
         .downcast::<modules::adapter_content::AdapterContentData>()
         .expect("cast AdapterContentData");
@@ -173,7 +187,9 @@ fn main() {
         per_base_sequence_quality as Box<dyn modules::QCModule>,
         per_sequence_quality_scores as Box<dyn modules::QCModule>,
         per_base_sequence_count as Box<dyn modules::QCModule>,
-
+        per_sequence_gc_content as Box<dyn modules::QCModule>,
+        per_base_n_content as Box<dyn modules::QCModule>,
+        sequence_length_distribution as Box<dyn modules::QCModule>,
         adapter_content as Box<dyn modules::QCModule>,
     ];
     for module in modules.iter_mut() {

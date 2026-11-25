@@ -1520,6 +1520,7 @@ dependencies = [
  "bcrypt",
  "chrono",
  "clap",
+ "crossbeam-channel",
  "deadpool-redis",
  "derive_more",
  "diesel",

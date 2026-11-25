@@ -8,20 +8,23 @@ use gene_platform::utils::available_parallelism;
 use std::path::PathBuf;
 use std::time::Instant;
 
-/// FastQC - A high throughput sequence QC analysis tool
+/// fastqc - A high throughput sequence QC analysis tool
 #[derive(Parser, Debug)]
 #[command(name = "fastqc", version, about)]
 struct Cli {
-    /// Total thread budget for the run [default: (available CPUs).min(20) ].
-    /// Spread across the file processed simultaneously.
+    /// Total thread budget for the run [default: available CPUs ].
     #[arg(short, long, value_name = "N", value_parser = parse_threads)]
     threads: Option<usize>,
 
-    /// Background gzip decoders per .fastq.gz file. The first counts towards
-    /// --threads and keeps up with the analysis; any more do not count. 0
-    /// decodes on the reading thread.
+    /// Background gzip decoders for .fastq.gz file. If no the index file specified,
+    /// it will be 1 by default, 0 decodes on the reading thread.
+    /// If index file is specified, it is better to leave this unset.
     #[arg(long = "decompress-threads", value_name = "N")]
     decompress_threads: Option<usize>,
+
+    /// Specifies processers and file readers ratio
+    #[arg(short, long, value_name = "N", default_value = "1.0")]
+    ratio: f64,
 
     /// Specifies the truncation length used for duplicate detection.
     /// Reads longer than this value will be truncated before checking for duplicates.
@@ -39,7 +42,7 @@ struct Cli {
     #[arg(short = 'c', long, value_name = "FILE")]
     contaminants: Option<PathBuf>,
 
-    // Specifies a non-default file which contains the list of adapter sequences
+    /// Specifies a non-default file which contains the list of adapter sequences
     /// which will be explicitly searched against the library.
     #[arg(short, long, value_name = "FILE")]
     adapters: Option<PathBuf>,
@@ -49,11 +52,11 @@ struct Cli {
     #[arg(short, long, value_name = "FILE")]
     limits: Option<PathBuf>,
 
-    /// Gzip index file
+    /// Specify the gzip index file
     #[arg(short, long, value_name = "FILE")]
     index_file: Option<PathBuf>,
 
-    /// Input file (one FastQ, BAM, or SAM file).
+    /// Input file (one FastQ, or FastQ.gz file).
     #[arg(required = true)]
     file: PathBuf,
 }
@@ -69,21 +72,24 @@ fn parse_threads(value: &str) -> Result<usize, String> {
 fn main() {
     let cli = Cli::parse();
 
-    let total_threads = cli
-        .threads
-        .unwrap_or_else(|| available_parallelism().min(20))
-        .max(1);
+    let total_threads = cli.threads.unwrap_or_else(available_parallelism).max(1);
 
     if let Some(ref threads) = cli.decompress_threads
         && total_threads <= *threads
     {
-        eprintln!("threads should be above decompress_threads");
+        eprintln!("threads should be above decompress_threads.");
+        return;
+    }
+
+    if cli.ratio <= 0. {
+        eprintln!("radio should be above 0.");
         return;
     }
 
     let config = Config {
         threads: total_threads,
         decompress_threads: cli.decompress_threads,
+        ratio: cli.ratio,
         index_file: cli.index_file,
     };
 

@@ -284,7 +284,7 @@ impl FastqFile {
                         fq.read_next()?;
                         vec![fq]
                     } else {
-                        let parallel = config.threads / 2;
+                        let parallel = (config.threads as f64 / (config.ratio + 1.0)).round() as usize;
                         let total_lines = index.total_line_count().unwrap_or(0);
                         if total_lines == 0 || total_lines % 4 != 0 {
                             return Err(io::Error::new(

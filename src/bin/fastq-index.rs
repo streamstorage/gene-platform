@@ -5,17 +5,15 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::time::Instant;
 
-/// FastQC - A high throughput sequence QC analysis tool
+/// fastq-index - A high throughput index builder for gziped fastq file.
 #[derive(Parser, Debug)]
-#[command(name = "fastqc", version, about)]
+#[command(name = "fastq-index", version, about)]
 struct Cli {
-    /// Total thread budget for the run [default: available CPUs, up to 6].
-    /// Spread across the files processed simultaneously and then within each
-    /// file (a reader, its gzip decoder, and analysis workers).
+    /// Total thread budget for the run [default: available CPUs].
     #[arg(short, long, value_name = "N", value_parser = parse_threads)]
     threads: Option<usize>,
 
-    /// Input files (one FastQ, BAM, or SAM).
+    /// Input file (one fastq.gz file).
     #[arg(required = true)]
     file: PathBuf,
 }

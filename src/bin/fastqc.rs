@@ -154,6 +154,12 @@ fn main() {
         .into_any()
         .downcast::<modules::per_sequence_quality::QualityScores>()
         .expect("cast QualityScores");
+    let per_base_sequence_count = values
+        .remove(0)
+        .into_any()
+        .downcast::<modules::per_base_content::SequenceContent>()
+        .expect("cast QualityScores");
+
     let adapter_content = values
         .pop()
         .unwrap()
@@ -166,6 +172,8 @@ fn main() {
         basic_statistics as Box<dyn modules::QCModule>,
         per_base_sequence_quality as Box<dyn modules::QCModule>,
         per_sequence_quality_scores as Box<dyn modules::QCModule>,
+        per_base_sequence_count as Box<dyn modules::QCModule>,
+
         adapter_content as Box<dyn modules::QCModule>,
     ];
     for module in modules.iter_mut() {

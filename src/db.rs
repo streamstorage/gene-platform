@@ -15,7 +15,7 @@ pub struct DB {
 }
 
 // schema
-// DATABASE_URL=mysql://username:password@localhost:3306/database_name
+// DATABASE_URL=postgres://username:password@localhost:3306/database_name
 impl Default for DB {
     fn default() -> Self {
         Self {
